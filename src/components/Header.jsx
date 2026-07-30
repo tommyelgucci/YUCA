@@ -1,0 +1,97 @@
+import { useState } from 'react';
+import { Menu } from 'lucide-react';
+import { brand, navLinks, sectionIds } from '../data/site';
+import { useActiveSection, useScrolled } from '../hooks/useScrollState';
+import Mascot from './Mascot';
+import MobileMenu from './MobileMenu';
+
+/**
+ * Barra superior fija: navegación, accesos de cuenta y menú móvil.
+ *
+ * @param {(variant: 'login' | 'signup') => void} onOpenAuth
+ *        Abre el modal de sesión/registro en la variante indicada.
+ */
+export default function Header({ onOpenAuth }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const scrolled = useScrolled();
+  const activeSection = useActiveSection(sectionIds);
+
+  return (
+    <>
+      <header
+        className={`sticky top-0 z-40 border-b transition-colors duration-300 ${
+          scrolled
+            ? 'border-yuca-green/15 bg-yuca-bg/95 shadow-soft backdrop-blur-md'
+            : 'border-transparent bg-yuca-bg/80 backdrop-blur'
+        }`}
+      >
+        <div className="container-yuca flex h-16 items-center justify-between gap-4 sm:h-20">
+          {/* Logo */}
+          <a
+            href="#inicio"
+            className="group flex shrink-0 items-center gap-2.5 rounded-2xl font-display text-lg text-yuca-green-deep sm:text-xl"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-yuca-cream ring-1 ring-yuca-green/15 transition-transform duration-300 ease-yuca group-hover:-rotate-6">
+              <Mascot className="h-7 w-7" />
+            </span>
+            <span className="leading-none">{brand.name}</span>
+          </a>
+
+          {/* Navegación de escritorio */}
+          <nav aria-label="Principal" className="hidden lg:block">
+            <ul className="flex items-center gap-1">
+              {navLinks.map((link) => {
+                const isActive = activeSection === link.href.replace('#', '');
+                return (
+                  <li key={link.href}>
+                    <a
+                      href={link.href}
+                      aria-current={isActive ? 'true' : undefined}
+                      className={`inline-block rounded-2xl px-3.5 py-2 text-sm font-bold transition-colors ${
+                        isActive
+                          ? 'bg-yuca-cream/70 text-yuca-green-deep'
+                          : 'text-yuca-ink-soft hover:bg-yuca-cream/50 hover:text-yuca-green-deep'
+                      }`}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          {/* Acciones de cuenta */}
+          <div className="hidden items-center gap-2 lg:flex">
+            <button type="button" onClick={() => onOpenAuth('login')} className="btn-ghost btn-sm">
+              Iniciar sesión
+            </button>
+            <button type="button" onClick={() => onOpenAuth('signup')} className="btn-primary btn-sm">
+              Crear cuenta
+            </button>
+          </div>
+
+          {/* Disparador del menú móvil */}
+          <button
+            type="button"
+            className="btn-ghost -mr-2 p-2 lg:hidden"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Abrir menú"
+            aria-expanded={menuOpen}
+            aria-controls="menu-movil"
+          >
+            <Menu size={24} aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+
+      <MobileMenu
+        id="menu-movil"
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        activeSection={activeSection}
+        onOpenAuth={onOpenAuth}
+      />
+    </>
+  );
+}
