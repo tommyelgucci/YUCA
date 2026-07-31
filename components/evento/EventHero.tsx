@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { CalendarDays, MapPin, Sparkles, Ticket } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, MapPin, Sparkles, Ticket } from 'lucide-react';
 import { edicionActual } from '@/lib/data/edicion';
+import { convocatoriaArtistas } from '@/lib/data/convocatorias';
 import { useAuthModal } from '@/components/layout/AuthModalContext';
 import { useMotionPresets } from '@/hooks/useMotionPresets';
 import { bs } from '@/lib/utils';
@@ -60,9 +61,19 @@ export default function EventHero() {
               ? 'Confirmar asistencia'
               : `Reservar entrada · ${bs(ticket.priceBob)}`}
           </button>
-          <button type="button" onClick={() => openAuth('signup')} className="btn-outline btn-lg">
+          <a
+            href={convocatoriaArtistas.formUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-outline btn-lg group"
+          >
             Quiero una mesa
-          </button>
+            <ArrowUpRight
+              size={17}
+              aria-hidden="true"
+              className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+            />
+          </a>
         </motion.div>
       </motion.div>
     </section>

@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Clock3, MapPin, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Clock3, MapPin, X } from 'lucide-react';
 import { ESTADOS, getStand } from '@/lib/data/feria';
 import { getExpositorPorStand } from '@/lib/data/expositores';
 import { sectores } from '@/lib/data/feria';
-import { useAuthModal } from '@/components/layout/AuthModalContext';
 import { useMotionPresets } from '@/hooks/useMotionPresets';
 import { Avatar, CategoryBadge, VerifiedBadge } from '@/components/ui/Badges';
+import { convocatoriaArtistas } from '@/lib/data/convocatorias';
 import ExpositorSocials from './ExpositorSocials';
 import { bs } from '@/lib/utils';
 
@@ -26,7 +26,6 @@ export default function StandDetail({
   onClose: () => void;
 }) {
   const { reduce, transition } = useMotionPresets();
-  const openAuth = useAuthModal();
 
   const stand = getStand(standId);
   const expositor = getExpositorPorStand(standId);
@@ -122,18 +121,25 @@ export default function StandDetail({
             <div>
               <h3 className="mb-1 text-lg">Mesa disponible</h3>
               <p className="mb-4 text-sm leading-relaxed text-yuca-ink-soft">
-                {sector?.name} · {bs(stand.priceBob)} por la edición completa. Para apartarla
-                necesitas una cuenta de expositor.
+                {sector?.name} · {bs(stand.priceBob)} por la edición completa.
               </p>
-              <button
-                type="button"
-                onClick={() => openAuth('signup')}
-                className="btn-primary btn-md w-full"
+              {/* Hasta que exista el flujo con cuenta (Fase 2), el CTA lleva al
+                  formulario de convocatoria que la organización ya usa. */}
+              <a
+                href={convocatoriaArtistas.formUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary btn-md group w-full"
               >
                 Quiero esta mesa
-              </button>
+                <ArrowUpRight
+                  size={15}
+                  aria-hidden="true"
+                  className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                />
+              </a>
               <p className="mt-2 text-center text-xs text-yuca-ink-soft">
-                Pago por transferencia por QR
+                Postulas por la convocatoria · pago por transferencia por QR
               </p>
             </div>
           )}

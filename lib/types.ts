@@ -135,6 +135,34 @@ export interface Reservation {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Convocatorias                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A quién va dirigida cada convocatoria.
+ *
+ * Ojo: no todos los que ocupan una mesa son artistas. Comidas y emprendimientos
+ * también pagan y ocupan stand, así que no deben modelarse como `externo`
+ * (ese estado es sólo para espacios de la organización).
+ */
+export type ConvocatoriaAudience = 'artistas' | 'comidas' | 'emprendimientos';
+
+export interface Convocatoria {
+  id: string;
+  audience: ConvocatoriaAudience;
+  title: string;
+  description: string;
+  /** Formulario de Google que se usa hoy para postular. */
+  formUrl: string;
+  /** Ronda de la convocatoria, tal como se anuncia en redes ("Fase 3"). */
+  phaseLabel: string;
+  /** Rótulo corto para el footer ("Ser expositor"). */
+  shortLabel: string;
+  /** `false` cierra la postulación y deshabilita el botón. */
+  open: boolean;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Evento y actividades                                                        */
 /* -------------------------------------------------------------------------- */
 

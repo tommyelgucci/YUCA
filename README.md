@@ -155,6 +155,21 @@ Los eventos próximos viven en [`lib/data/eventos.ts`](lib/data/eventos.ts):
 | Druida          | 19 de septiembre de 2026          | por confirmar  |
 | YukaWaii Fest 4 | Noviembre 2026, día por confirmar | sí             |
 
+## Convocatorias
+
+Hoy la postulación se hace con los formularios de Google que ya están
+publicados en el Linktree, y la web enlaza a ellos: los CTA de mesa
+("Quiero una mesa", "Quiero esta mesa") apuntan al formulario de artistas.
+Viven en [`lib/data/convocatorias.ts`](lib/data/convocatorias.ts).
+
+Hay **tres públicos distintos**, no sólo artistas: artistas, comidas y
+emprendimientos. Comidas y emprendimientos también pagan y ocupan mesa, así que
+no deben modelarse como `externo` (ese estado es sólo para espacios de la
+organización).
+
+Cuando entre la Fase 2, estos enlaces se sustituyen por el flujo interno de
+cuenta + elección de mesa + pago.
+
 ## Pendiente de datos reales
 
 Marcado con `TODO` en el código:
@@ -167,6 +182,9 @@ Marcado con `TODO` en el código:
 - `NEXT_PUBLIC_SITE_URL` con el dominio real (miniaturas de Open Graph).
 - Fotos de eventos, arte de Yuquita y `public/og-image.jpg`.
 - Los expositores y el plano de `lib/data/` son de demostración.
+- Qué convocatorias siguen abiertas y hasta cuándo (las tres figuran abiertas).
+- Qué significa "Fase 3" y si habrá fases siguientes.
+- Si comidas y emprendimientos ocupan mesas del mismo plano y a qué precio.
 
 Ya cargados: Instagram, TikTok, Facebook, Discord, WhatsApp y correo de
 contacto (en [`lib/site.js`](lib/site.js)).

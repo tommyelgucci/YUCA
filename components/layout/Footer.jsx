@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
-import { Mail, MessageSquare } from 'lucide-react';
-import { brand, contacto, navLinks, participateLinks, socials } from '@/lib/site';
+import { Link2 as LinkIcon, Mail, MessageSquare } from 'lucide-react';
+import { brand, contacto, navLinks, socials } from '@/lib/site';
+import { convocatorias } from '@/lib/data/convocatorias';
 import Mascot from './Mascot';
 import SocialLinks from './SocialLinks';
 
@@ -37,9 +38,20 @@ function FooterLink({ href, children }) {
 export default function Footer() {
   const year = new Date().getFullYear();
 
+  // "Participa" se deriva de las convocatorias para no mantener dos listas de
+  // enlaces que se desincronizan en cuanto cambia una URL de formulario.
   const columns = [
     { title: 'Navegación', links: navLinks },
-    { title: 'Participa', links: participateLinks },
+    {
+      title: 'Participa',
+      links: [
+        ...convocatorias.map((convocatoria) => ({
+          label: convocatoria.shortLabel,
+          href: convocatoria.formUrl,
+        })),
+        { label: 'Escríbenos', href: `mailto:${contacto.email}` },
+      ],
+    },
   ];
 
   return (
@@ -87,6 +99,17 @@ export default function Footer() {
               >
                 <Mail size={15} className="shrink-0 text-yuca-mustard" aria-hidden="true" />
                 {contacto.email}
+              </a>
+            </li>
+            <li>
+              <a
+                href={contacto.linktree}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-white/80 hover:text-white"
+              >
+                <LinkIcon size={15} className="shrink-0 text-yuca-mustard" aria-hidden="true" />
+                Todos nuestros enlaces
               </a>
             </li>
             <li>
