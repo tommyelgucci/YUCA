@@ -13,7 +13,12 @@ npm install
 npm run dev     # http://localhost:3000
 npm run build   # build de producción
 npm start       # sirve el build
+npm test        # pruebas de reservas contra Postgres real (PGlite)
 ```
+
+Arranca sin configurar nada: sin `DATABASE_URL` usa los datos de `lib/data/` y
+sin claves de Clerk oculta las cuentas y el panel. Para activarlos, copia
+`.env.example` a `.env.local`.
 
 ## Rutas
 
@@ -22,6 +27,9 @@ npm start       # sirve el build
 | `/`                 | Portada: comunidad, agenda, ediciones pasadas, categorías, Discord |
 | `/evento`           | Vista del festival con pestañas Info · Participantes · Actividades |
 | `/artistas/[slug]`  | Perfil público del expositor                                  |
+| `/admin`            | Cola de pagos por revisar (sólo rol `staff`)                  |
+| `/iniciar-sesion`, `/crear-cuenta` | Clerk                                         |
+| `/api/cron/expirar-reservas` | Libera mesas con la reserva vencida                  |
 
 Enlaces profundos que funcionan y son compartibles:
 
@@ -44,8 +52,17 @@ components/
 │                           StandMap, StandLegend, StandDetail, ActividadesPanel
 └── ui/                     Section, VineDivider, ImageFrame, Badges
 
+db/
+├── schema.ts               Esquema Postgres (Drizzle)
+├── index.ts                Conexión; devuelve null si no hay DATABASE_URL
+├── seed.ts                 Siembra la base con los datos de lib/data/
+├── migrations/             SQL generado por drizzle-kit
+└── reservas.test.ts        Pruebas contra Postgres real (PGlite)
+
 lib/
 ├── types.ts                👈 modelo de dominio (contrato UI ↔ datos)
+├── reservas.ts             Reservar, confirmar, cancelar, expirar
+├── auth.ts                 Roles de Clerk (authEnabled, esStaff)
 ├── site.js                 Contenido de la portada
 ├── data/                   Mocks: edición, feria, expositores, actividades
 └── utils.ts                cn(), formato de bolivianos
@@ -80,13 +97,40 @@ Es la pieza central, y estas son las decisiones que la sostienen:
 - **Móvil primero**: la lista es la vía principal y el plano se explora con zoom
   y scroll dentro de su tarjeta, sin desbordar la página.
 
-## Modelo de datos
+## Base de datos y reservas
 
-`lib/types.ts` es el contrato. Hoy lo alimentan los mocks de `lib/data/`;
-cuando entre la base de datos, el esquema de Drizzle debe producir exactamente
-esas formas y los componentes no se tocan.
+Postgres con Drizzle. `db/schema.ts` produce las formas de `lib/types.ts`.
 
-Entidades: `Exhibitor`, `Sector`, `Stand`, `Reservation`, `Edition`, `Activity`.
+```bash
+npm run db:generate   # SQL a partir del esquema
+npm run db:migrate    # aplica migraciones (necesita DATABASE_URL)
+npm run db:seed       # siembra con los datos de lib/data/
+```
+
+**La regla "una mesa, una reserva viva" la impone la base, no el código.** Un
+índice único parcial sobre `reservations(stand_id) WHERE status IN
+('pendiente','confirmada')` hace imposible la doble reserva: comprobarlo
+leyendo antes de escribir dejaría una carrera entre la lectura y la inserción,
+y con pago manual y días de espera esa carrera se pierde tarde o temprano.
+`lib/reservas.ts` sólo traduce el error de unicidad a un mensaje.
+
+Hay otro índice igual por expositor: nadie aparta dos mesas a la vez.
+
+### Pruebas
+
+`npm test` corre contra **PGlite** —Postgres compilado a WASM, en memoria, sin
+servidor— así que se ejercita el mismo dialecto y las mismas restricciones que
+en Supabase. Cubre: reserva feliz, doble reserva, carrera simultánea, doble
+mesa por expositor, confirmación, expiración, cancelación, mesas de la
+organización, y que la base rechaza la doble reserva **aunque el estado del
+stand se desincronice**.
+
+### Ciclo de vida de una mesa
+
+`disponible` → (alguien la aparta) `reservado` / reserva `pendiente` →
+(el staff valida la transferencia) `ocupado` / reserva `confirmada`.
+Si vence el plazo (48 h por defecto, `reservationTtlMinutes`) el cron la
+devuelve a `disponible`.
 
 El flujo de la mesa es: el artista crea cuenta → elige stand → transfiere por QR
 → sube comprobante → el staff confirma → el stand pasa a `ocupado` y su perfil
@@ -138,10 +182,14 @@ archivo no exista, el valor es `null` y se pinta un marcador de posición. Ver
 interactivo, perfiles públicos de artista, actividades con cupos. Todo sobre
 datos mock, sin escrituras.
 
-**Falta (Fase 2)** — autenticación (Clerk), base de datos (Supabase + Drizzle),
-registro de expositor, flujo de reserva con subida de comprobante, y **panel de
-admin** para confirmar pagos, asignar stands y otorgar la insignia de
-verificado.
+**Hecho (Fase 2, primera mitad)** — esquema de base con Drizzle, lógica de
+reservas probada, Clerk con roles, panel de admin con la cola de pagos, y cron
+de expiración.
+
+**Falta (Fase 2, segunda mitad)** — registro de expositor que cree su perfil al
+entrar con Clerk, pantalla "mi cuenta" para elegir mesa y declarar la
+transferencia, subida de la captura del comprobante (necesita almacenamiento) y
+la pantalla de verificación de perfiles.
 
 **Fase 3** — inscripción a actividades con control de cupos y la Cacería de
 Sellos con QR (necesita tolerar mala señal dentro del salón).
@@ -152,7 +200,7 @@ Los eventos próximos viven en [`lib/data/eventos.ts`](lib/data/eventos.ts):
 
 | Evento          | Fecha                            | Feria con mapa |
 | --------------- | -------------------------------- | -------------- |
-| Druida          | 19 de septiembre de 2026          | por confirmar  |
+| Druida          | 19 de septiembre de 2026          | sí, plano pendiente de sede |
 | YukaWaii Fest 4 | Noviembre 2026, día por confirmar | sí             |
 
 ## Convocatorias
@@ -170,14 +218,23 @@ organización).
 Cuando entre la Fase 2, estos enlaces se sustituyen por el flujo interno de
 cuenta + elección de mesa + pago.
 
+## Cuentas y roles
+
+Clerk lleva la identidad; el rol vive en `publicMetadata.role` de cada usuario
+(`asistente`, `expositor` o `staff`) y se asigna desde el panel de Clerk. El rol
+sólo se lee en el servidor: el middleware exige sesión en `/admin` y `/mi-cuenta`,
+y además **cada Server Action vuelve a comprobar que quien la llama es staff**,
+porque una Server Action es un endpoint público al que se puede llamar directo.
+
 ## Pendiente de datos reales
 
 Marcado con `TODO` en el código:
 
-- **Año de Druida**: se asumió 2026 por ser el próximo 19 de septiembre. Confirmar.
 - Día exacto del YukaWaii Fest 4 (sólo está confirmado el mes).
 - Sede, dirección y ciudad de ambos eventos.
-- Si Druida tendrá feria de artistas con mapa de stands.
+- Sede de Druida: sin ella no se puede dibujar su plano de stands. Cuando
+  llegue, la vista de evento debe pasar a `/evento/[slug]` para servir las dos
+  ferias.
 - Precio real de las mesas por sector y precio de entrada (hoy figura libre).
 - `NEXT_PUBLIC_SITE_URL` con el dominio real (miniaturas de Open Graph).
 - Fotos de eventos, arte de Yuquita y `public/og-image.jpg`.

@@ -4,9 +4,9 @@ import { edicionActual } from './edicion';
 /**
  * Druida — evento propio de Proyecto Yuca, anterior al próximo YukaWaii.
  *
- * ⚠️ Se confirmó la fecha (19 de septiembre) pero no el año de forma explícita:
- * se asume 2026 por ser el próximo 19 de septiembre. Verificar antes de
- * publicar, igual que la sede y si tendrá feria con mapa de stands.
+ * Lleva feria de artistas con mesas, igual que el YukaWaii. Su plano no se
+ * puede dibujar todavía porque depende de la sede, así que su página aún no
+ * tiene mapa: en cuanto se confirme el local, se añade su propio plano.
  */
 export const druida: Edition = {
   id: 'druida-2026',
@@ -22,10 +22,10 @@ export const druida: Edition = {
     label: 'Entrada por confirmar',
     methods: ['qr'],
   },
-  standPriceBob: 0, // TODO: confirmar si habrá mesas y a qué precio
+  standPriceBob: 250, // TODO: precio real de la mesa
   description:
     'Otro encuentro de la comunidad Yuca. Detalles de sede y programa pronto en nuestras redes.',
-  hasFeria: false, // TODO: confirmar si tendrá feria con mapa de stands
+  hasFeria: true, // el plano se publica cuando se confirme la sede
 };
 
 /**

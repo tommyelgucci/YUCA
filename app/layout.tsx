@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { ClerkProvider } from '@clerk/nextjs';
 import SiteChrome from '@/components/layout/SiteChrome';
+import { authEnabled } from '@/lib/auth';
 import { OG_IMAGE } from '@/lib/imagenes';
 import './globals.css';
 
@@ -28,7 +30,7 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
+  const documento = (
     <html lang="es">
       <head>
         {/* Tipografías de marca: Baloo 2 (display) + Nunito (cuerpo).
@@ -46,4 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </body>
     </html>
   );
+
+  // Sin claves de Clerk la web funciona igual, sólo que sin cuentas.
+  return authEnabled ? <ClerkProvider>{documento}</ClerkProvider> : documento;
 }
