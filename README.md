@@ -88,12 +88,19 @@ Es la pieza central, y estas son las decisiones que la sostienen:
   la tarjeta centra el mapa.
 - **El id vive en la URL** (`?stand=C20`) para que un artista pueda publicar
   "estoy en la C20" con un enlace que abre el mapa ya centrado en su mesa.
-- **Cuatro estados, no tres**: `disponible`, `reservado`, `ocupado`, `externo`.
+- **Dos dimensiones por mesa, no una**: el *estado* dice si se puede pedir
+  (`disponible`, `reservado`, `ocupado`) y el *tipo* dice para qué es
+  (`arte`, `comida`, `emprendimiento`, `organizacion`). En el mapa el relleno
+  es el estado y el borde el tipo, así una mesa de comida libre no se confunde
+  con una de arte libre.
   `reservado` es imprescindible con pago manual — entre elegir la mesa y
   confirmar la transferencia pasan días, y en esa ventana la mesa no puede
   figurar ni libre ni ocupada, o dos personas pagan por la misma.
-- **El estado nunca depende sólo del color**: cada uno tiene su propia trama
-  (rayas, puntos) y el `aria-label` de cada stand lo dice en palabras.
+- **Comidas y emprendimientos no son `externo`**: pagan y ocupan mesa igual que
+  un artista. `organizacion` sí es espacio del equipo (acreditación, merch) y
+  nunca se pone a la venta.
+- **Nada depende sólo del color**: el estado reservado lleva trama, la leyenda
+  separa estado y zona, y el `aria-label` de cada stand lo dice en palabras.
 - **Móvil primero**: la lista es la vía principal y el plano se explora con zoom
   y scroll dentro de su tarjeta, sin desbordar la página.
 
@@ -205,18 +212,19 @@ Los eventos próximos viven en [`lib/data/eventos.ts`](lib/data/eventos.ts):
 
 ## Convocatorias
 
-Hoy la postulación se hace con los formularios de Google que ya están
-publicados en el Linktree, y la web enlaza a ellos: los CTA de mesa
-("Quiero una mesa", "Quiero esta mesa") apuntan al formulario de artistas.
+Van por fases y hay **tres públicos**: artistas, comidas y emprendimientos.
 Viven en [`lib/data/convocatorias.ts`](lib/data/convocatorias.ts).
 
-Hay **tres públicos distintos**, no sólo artistas: artistas, comidas y
-emprendimientos. Comidas y emprendimientos también pagan y ocupan mesa, así que
-no deben modelarse como `externo` (ese estado es sólo para espacios de la
-organización).
+**Estado actual: Fase 3 cerrada, Fase 4 por abrir.** Mientras dura ese hueco la
+web no enlaza los formularios de la fase cerrada —mandar a alguien a un Google
+Form que ya no acepta respuestas es peor que no ofrecer nada— y los botones de
+mesa llevan al Discord, que es donde se anuncia la siguiente.
 
-Cuando entre la Fase 2, estos enlaces se sustituyen por el flujo interno de
-cuenta + elección de mesa + pago.
+Ese destino lo decide `ctaMesa()` en un solo sitio, para que no queden botones
+sueltos apuntando a formularios muertos.
+
+**Para abrir la Fase 4**: en cada convocatoria pon `phaseLabel: 'Fase 4'`,
+`estado: 'abierta'` y el `formUrl` nuevo. La web se reconfigura sola.
 
 ## Cuentas y roles
 
@@ -232,9 +240,11 @@ Marcado con `TODO` en el código:
 
 - Día exacto del YukaWaii Fest 4 (sólo está confirmado el mes).
 - Sede, dirección y ciudad de ambos eventos.
-- Sede de Druida: sin ella no se puede dibujar su plano de stands. Cuando
-  llegue, la vista de evento debe pasar a `/evento/[slug]` para servir las dos
-  ferias.
+- **El plano entero es provisional**: no hay sede confirmada, así que sectores y
+  coordenadas de `lib/data/feria.ts` son una maqueta. Se sustituyen por los
+  reales cuando se cierre el local; el resto de la web no se toca.
+- Druida también lleva feria: cuando tenga sede, la vista de evento debe pasar a
+  `/evento/[slug]` para servir los dos planos.
 - Precio real de las mesas por sector y precio de entrada (hoy figura libre).
 - `NEXT_PUBLIC_SITE_URL` con el dominio real (miniaturas de Open Graph).
 - Fotos de eventos, arte de Yuquita y `public/og-image.jpg`.

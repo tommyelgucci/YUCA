@@ -1,5 +1,5 @@
-import { ArrowUpRight, PenTool, Store, UtensilsCrossed } from 'lucide-react';
-import { convocatorias } from '@/lib/data/convocatorias';
+import { ArrowUpRight, Lock, PenTool, Store, UtensilsCrossed } from 'lucide-react';
+import { convocatorias, hayConvocatoriaAbierta, proximaFase } from '@/lib/data/convocatorias';
 import type { ConvocatoriaAudience } from '@/lib/types';
 
 const ICONO: Record<ConvocatoriaAudience, typeof PenTool> = {
@@ -13,10 +13,12 @@ export default function Convocatorias() {
   return (
     <section aria-labelledby="titulo-convocatorias">
       <h2 id="titulo-convocatorias" className="mb-2 text-2xl">
-        Convocatorias abiertas
+        Convocatorias
       </h2>
       <p className="mb-6 max-w-2xl leading-relaxed text-yuca-ink-soft">
-        ¿Quieres un espacio en el festival? Postula en la convocatoria que te corresponda.
+        {hayConvocatoriaAbierta
+          ? '¿Quieres un espacio en el festival? Postula en la convocatoria que te corresponda.'
+          : `${proximaFase.aviso} Súmate al Discord y te avisamos apenas se abran.`}
       </p>
 
       <ul className="grid gap-4 sm:grid-cols-3">
@@ -30,8 +32,16 @@ export default function Convocatorias() {
                   <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-yuca-cream">
                     <Icon size={20} className="text-yuca-coral" aria-hidden="true" />
                   </span>
-                  <span className="pill bg-yuca-green-mist text-yuca-green-deep">
-                    {convocatoria.phaseLabel}
+                  <span
+                    className={`pill ${
+                      convocatoria.estado === 'abierta'
+                        ? 'bg-yuca-green-mist text-yuca-green-deep'
+                        : 'bg-yuca-cream text-yuca-ink-soft'
+                    }`}
+                  >
+                    {convocatoria.estado === 'abierta'
+                      ? convocatoria.phaseLabel
+                      : `${convocatoria.phaseLabel} cerrada`}
                   </span>
                 </div>
 
@@ -42,7 +52,7 @@ export default function Convocatorias() {
                 </p>
 
                 <div className="mt-auto">
-                  {convocatoria.open ? (
+                  {convocatoria.estado === 'abierta' ? (
                     <a
                       href={convocatoria.formUrl}
                       target="_blank"
@@ -57,9 +67,11 @@ export default function Convocatorias() {
                       />
                     </a>
                   ) : (
-                    <span className="pill bg-yuca-coral/15 text-yuca-coral-deep">
-                      Convocatoria cerrada
-                    </span>
+                    /* Cerrada: no se enlaza el formulario de la fase anterior. */
+                    <p className="flex items-center gap-2 text-sm font-bold text-yuca-ink-soft">
+                      <Lock size={14} className="shrink-0 text-yuca-mustard" aria-hidden="true" />
+                      {convocatoria.phaseLabel} cerrada · vuelve en la {proximaFase.label}
+                    </p>
                   )}
                 </div>
               </article>

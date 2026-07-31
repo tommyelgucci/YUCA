@@ -36,6 +36,8 @@ export type ArtCategory =
 
 export interface Exhibitor {
   id: string;
+  /** Público al que pertenece; decide en qué zona va su mesa. */
+  audience: ConvocatoriaAudience;
   /** Identificador de la URL pública: /artistas/[slug] */
   slug: string;
   displayName: string;
@@ -57,12 +59,14 @@ export interface Exhibitor {
 /* Feria: sectores y stands                                                    */
 /* -------------------------------------------------------------------------- */
 
-export type SectorId = 'lobby' | 'teatro' | 'galeria';
+export type SectorId = 'lobby' | 'teatro' | 'galeria' | 'comidas';
 
 export interface Sector {
   id: SectorId;
   name: string;
   description: string;
+  /** Tipo de mesa que agrupa la zona. */
+  kind: StandKind;
   /** Rectángulo del sector dentro del plano, en unidades del viewBox. */
   x: number;
   y: number;
@@ -71,14 +75,24 @@ export interface Sector {
 }
 
 /**
- * Estado de un stand.
+ * Estado de un stand: si se puede pedir o no.
  *
  * `reservado` es imprescindible con pago manual por transferencia: entre que
  * alguien elige la mesa y el staff confirma el pago pasan horas o días, y en
  * esa ventana el stand no puede aparecer ni libre ni ocupado.
  * Sin este estado, dos personas pagan por la misma mesa.
  */
-export type StandStatus = 'disponible' | 'reservado' | 'ocupado' | 'externo';
+export type StandStatus = 'disponible' | 'reservado' | 'ocupado';
+
+/**
+ * Para qué es la mesa. Es una dimensión aparte del estado: una mesa de comida
+ * también puede estar libre, reservada u ocupada.
+ *
+ * Antes las comidas se modelaban como estado `externo`, y era un error: pagan y
+ * ocupan mesa igual que un artista. `organizacion` sí es espacio propio del
+ * equipo (acreditación, merch) y nunca se pone a la venta.
+ */
+export type StandKind = 'arte' | 'comida' | 'emprendimiento' | 'organizacion';
 
 export interface Stand {
   /** Código visible: 'C20', 'A10'. Es también el ancla en la URL. */
@@ -90,9 +104,10 @@ export interface Stand {
   width: number;
   height: number;
   status: StandStatus;
+  kind: StandKind;
   /** Ocupante confirmado; sólo cuando `status === 'ocupado'`. */
   exhibitorId?: string;
-  /** Nombre del ocupante cuando es un externo (auspiciador, food truck…). */
+  /** Nombre del ocupante cuando es espacio de la organización. */
   externalName?: string;
   /** Precio en bolivianos de la mesa. */
   priceBob: number;
@@ -147,6 +162,13 @@ export interface Reservation {
  */
 export type ConvocatoriaAudience = 'artistas' | 'comidas' | 'emprendimientos';
 
+/**
+ * Las convocatorias van por fases. Entre una fase y la siguiente hay un hueco
+ * en el que no se puede postular, y ese hueco necesita su propio estado: no es
+ * lo mismo "cerrada para siempre" que "cerrada mientras preparamos la próxima".
+ */
+export type ConvocatoriaEstado = 'abierta' | 'cerrada' | 'proximamente';
+
 export interface Convocatoria {
   id: string;
   audience: ConvocatoriaAudience;
@@ -158,8 +180,7 @@ export interface Convocatoria {
   phaseLabel: string;
   /** Rótulo corto para el footer ("Ser expositor"). */
   shortLabel: string;
-  /** `false` cierra la postulación y deshabilita el botón. */
-  open: boolean;
+  estado: ConvocatoriaEstado;
 }
 
 /* -------------------------------------------------------------------------- */

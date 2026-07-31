@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { ArrowUpRight, CalendarDays, MapPin, Sparkles, Ticket } from 'lucide-react';
 import { edicionActual } from '@/lib/data/edicion';
-import { convocatoriaArtistas } from '@/lib/data/convocatorias';
+import { ctaMesa } from '@/lib/data/convocatorias';
 import { useAuthModal } from '@/components/layout/AuthModalContext';
 import { useMotionPresets } from '@/hooks/useMotionPresets';
 import { bs } from '@/lib/utils';
@@ -13,6 +13,7 @@ export default function EventHero() {
   const { fadeUp, stagger } = useMotionPresets();
   const openAuth = useAuthModal();
   const { ticket } = edicionActual;
+  const mesa = ctaMesa();
 
   const datos = [
     { Icon: CalendarDays, value: edicionActual.dateLabel },
@@ -62,12 +63,12 @@ export default function EventHero() {
               : `Reservar entrada · ${bs(ticket.priceBob)}`}
           </button>
           <a
-            href={convocatoriaArtistas.formUrl}
+            href={mesa.href}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-outline btn-lg group"
           >
-            Quiero una mesa
+            {mesa.label}
             <ArrowUpRight
               size={17}
               aria-hidden="true"

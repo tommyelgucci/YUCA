@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, ArrowUpRight, Clock3, MapPin, X } from 'lucide-react';
-import { ESTADOS, getStand } from '@/lib/data/feria';
+import { ESTADOS, ZONAS, getStand } from '@/lib/data/feria';
 import { getExpositorPorStand } from '@/lib/data/expositores';
 import { sectores } from '@/lib/data/feria';
 import { useMotionPresets } from '@/hooks/useMotionPresets';
 import { Avatar, CategoryBadge, VerifiedBadge } from '@/components/ui/Badges';
-import { convocatoriaArtistas } from '@/lib/data/convocatorias';
+import { ctaMesa } from '@/lib/data/convocatorias';
 import ExpositorSocials from './ExpositorSocials';
 import { bs } from '@/lib/utils';
 
@@ -26,6 +26,7 @@ export default function StandDetail({
   onClose: () => void;
 }) {
   const { reduce, transition } = useMotionPresets();
+  const mesa = ctaMesa();
 
   const stand = getStand(standId);
   const expositor = getExpositorPorStand(standId);
@@ -52,8 +53,11 @@ export default function StandDetail({
             <X size={18} aria-hidden="true" />
           </button>
 
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <span className="pill bg-yuca-green-deep text-white">Stand {stand.id}</span>
+            <span className="pill bg-yuca-cream text-yuca-ink-soft">
+              {ZONAS[stand.kind].label}
+            </span>
             <span className="text-xs font-bold text-yuca-ink-soft">
               {ESTADOS[stand.status].label}
             </span>
@@ -97,7 +101,7 @@ export default function StandDetail({
                 </Link>
               </div>
             </div>
-          ) : stand.status === 'externo' ? (
+          ) : stand.kind === 'organizacion' ? (
             /* ---------- Espacio de la organización o auspicio ---------- */
             <div>
               <h3 className="mb-1 text-lg">{stand.externalName}</h3>
@@ -121,26 +125,25 @@ export default function StandDetail({
             <div>
               <h3 className="mb-1 text-lg">Mesa disponible</h3>
               <p className="mb-4 text-sm leading-relaxed text-yuca-ink-soft">
-                {sector?.name} · {bs(stand.priceBob)} por la edición completa.
+                {sector?.name} · zona de {ZONAS[stand.kind].label.toLowerCase()} ·{' '}
+                {bs(stand.priceBob)} por la edición completa.
               </p>
-              {/* Hasta que exista el flujo con cuenta (Fase 2), el CTA lleva al
-                  formulario de convocatoria que la organización ya usa. */}
+              {/* El destino lo decide `ctaMesa()`: el formulario si la
+                  convocatoria está abierta, el Discord si la fase ya cerró. */}
               <a
-                href={convocatoriaArtistas.formUrl}
+                href={mesa.href}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-primary btn-md group w-full"
               >
-                Quiero esta mesa
+                {mesa.label}
                 <ArrowUpRight
                   size={15}
                   aria-hidden="true"
                   className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                 />
               </a>
-              <p className="mt-2 text-center text-xs text-yuca-ink-soft">
-                Postulas por la convocatoria · pago por transferencia por QR
-              </p>
+              <p className="mt-2 text-center text-xs text-yuca-ink-soft">{mesa.nota}</p>
             </div>
           )}
         </motion.aside>

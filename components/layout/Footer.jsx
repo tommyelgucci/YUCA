@@ -45,9 +45,11 @@ export default function Footer() {
     {
       title: 'Participa',
       links: [
+        // Sólo se enlazan las convocatorias que aceptan postulaciones; las
+        // cerradas llevan a la sección del evento, no a un formulario muerto.
         ...convocatorias.map((convocatoria) => ({
           label: convocatoria.shortLabel,
-          href: convocatoria.formUrl,
+          href: convocatoria.estado === 'abierta' ? convocatoria.formUrl : '/evento',
         })),
         { label: 'Escríbenos', href: `mailto:${contacto.email}` },
       ],

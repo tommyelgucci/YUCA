@@ -11,11 +11,27 @@ import StandLegend from './StandLegend';
 import StandDetail from './StandDetail';
 import ExpositorSocials from './ExpositorSocials';
 
-/** Categorías presentes en esta edición, para el filtro. */
+/** Tipos de participante presentes en la feria. */
+const TIPOS = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'artistas', label: 'Arte' },
+  { id: 'comidas', label: 'Comidas' },
+  { id: 'emprendimientos', label: 'Emprendimientos' },
+] as const;
+
+type TipoId = (typeof TIPOS)[number]['id'];
+
+/** Categorías de arte presentes en esta edición, para el segundo filtro. */
 function categoriasDisponibles() {
   const set = new Set<string>();
   expositores.forEach((e) => e.categories.forEach((c) => set.add(c)));
   return ['Todas', ...Array.from(set).sort()];
+}
+
+/** Qué se muestra bajo el nombre: sus categorías, o el tipo si no es artista. */
+function subtitulo(expositor: (typeof expositores)[number]): string {
+  if (expositor.categories.length > 0) return expositor.categories.join(' · ');
+  return TIPOS.find((t) => t.id === expositor.audience)?.label ?? '';
 }
 
 /**
@@ -25,6 +41,7 @@ function categoriasDisponibles() {
 export default function ParticipantesPanel() {
   const { selected, origin, select } = useStandSelection();
   const [query, setQuery] = useState('');
+  const [tipo, setTipo] = useState<TipoId>('todos');
   const [categoria, setCategoria] = useState('Todas');
   const reduce = useReducedMotion();
 
@@ -38,11 +55,15 @@ export default function ParticipantesPanel() {
         e.displayName.toLowerCase().includes(q) ||
         e.standId?.toLowerCase().includes(q) ||
         e.categories.some((c) => c.toLowerCase().includes(q));
+      const coincideTipo = tipo === 'todos' || e.audience === tipo;
       const coincideCategoria =
         categoria === 'Todas' || e.categories.includes(categoria as never);
-      return coincideTexto && coincideCategoria;
+      return coincideTexto && coincideTipo && coincideCategoria;
     });
-  }, [query, categoria]);
+  }, [query, tipo, categoria]);
+
+  // La categoría de arte sólo tiene sentido mirando arte.
+  const mostrarCategorias = tipo === 'todos' || tipo === 'artistas';
 
   // Selección hecha en el mapa -> traer su tarjeta a la vista en la lista.
   useEffect(() => {
@@ -84,27 +105,60 @@ export default function ParticipantesPanel() {
             />
           </label>
 
-          <div className="flex flex-wrap gap-1.5">
-            {categorias.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setCategoria(item)}
-                aria-pressed={categoria === item}
-                className={`pill transition-colors ${
-                  categoria === item
-                    ? 'bg-yuca-green text-white'
-                    : 'bg-yuca-cream/70 text-yuca-green-deep hover:bg-yuca-cream'
-                }`}
-              >
-                {item}
-              </button>
-            ))}
+          <div>
+            <p className="mb-1.5 text-xs font-extrabold uppercase tracking-[0.12em] text-yuca-ink-soft">
+              Tipo
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {TIPOS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setTipo(item.id);
+                    setCategoria('Todas');
+                  }}
+                  aria-pressed={tipo === item.id}
+                  className={`pill transition-colors ${
+                    tipo === item.id
+                      ? 'bg-yuca-green text-white'
+                      : 'bg-yuca-cream/70 text-yuca-green-deep hover:bg-yuca-cream'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {mostrarCategorias && (
+            <div>
+              <p className="mb-1.5 text-xs font-extrabold uppercase tracking-[0.12em] text-yuca-ink-soft">
+                Categoría de arte
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {categorias.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setCategoria(item)}
+                    aria-pressed={categoria === item}
+                    className={`pill transition-colors ${
+                      categoria === item
+                        ? 'bg-yuca-green text-white'
+                        : 'bg-yuca-cream/70 text-yuca-green-deep hover:bg-yuca-cream'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <p className="mb-3 text-sm text-yuca-ink-soft" aria-live="polite">
-          {visibles.length} {visibles.length === 1 ? 'artista' : 'artistas'}
+          {visibles.length} {visibles.length === 1 ? 'participante' : 'participantes'}
         </p>
 
         <ul className="flex max-h-[70vh] flex-col gap-2.5 overflow-y-auto pr-1 lg:max-h-[calc(100vh-16rem)]">
@@ -126,7 +180,7 @@ export default function ParticipantesPanel() {
                       {expositor.verified && <VerifiedBadge />}
                     </p>
                     <p className="mt-0.5 truncate text-xs text-yuca-ink-soft">
-                      {expositor.categories.join(' · ')}
+                      {subtitulo(expositor)}
                     </p>
                     <div className="mt-2">
                       <ExpositorSocials

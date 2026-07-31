@@ -1,7 +1,7 @@
 import { ArrowUpRight, CalendarDays, MapPin, QrCode, Store } from 'lucide-react';
 import { edicionActual } from '@/lib/data/edicion';
 import { stands } from '@/lib/data/feria';
-import { convocatoriaArtistas } from '@/lib/data/convocatorias';
+import { ctaMesa } from '@/lib/data/convocatorias';
 import { bs } from '@/lib/utils';
 import type { PaymentMethod } from '@/lib/types';
 import Convocatorias from './Convocatorias';
@@ -16,6 +16,7 @@ const METODOS: Record<PaymentMethod, { label: string; help: string; Icon: typeof
 
 export default function InfoPanel() {
   const disponibles = stands.filter((s) => s.status === 'disponible').length;
+  const mesa = ctaMesa();
 
   const datos = [
     { Icon: CalendarDays, label: 'Cuándo', value: edicionActual.dateLabel },
@@ -46,9 +47,8 @@ export default function InfoPanel() {
         <aside className="card p-5">
           <h3 className="mb-1 text-xl">¿Quieres una mesa?</h3>
           <p className="mb-4 text-sm leading-relaxed text-yuca-ink-soft">
-            Postula en la convocatoria de artistas. Cuando la organización confirme tu lugar,
-            eliges mesa y la aseguras con el pago; tu perfil aparece entonces en la lista de
-            participantes.
+            {mesa.nota} Cuando la organización confirme tu lugar, eliges mesa y la aseguras con el
+            pago; tu perfil aparece entonces en la lista de participantes.
           </p>
 
           <p className="mb-4 font-display text-2xl text-yuca-green-deep">
@@ -59,12 +59,12 @@ export default function InfoPanel() {
           </p>
 
           <a
-            href={convocatoriaArtistas.formUrl}
+            href={mesa.href}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-primary btn-md group mb-5 w-full"
           >
-            Postular como artista
+            {mesa.label}
             <ArrowUpRight
               size={16}
               aria-hidden="true"

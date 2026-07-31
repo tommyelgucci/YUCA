@@ -24,11 +24,14 @@ import {
 /* -------------------------------------------------------------------------- */
 
 export const userRole = pgEnum('user_role', ['asistente', 'expositor', 'staff']);
-export const standStatus = pgEnum('stand_status', [
-  'disponible',
-  'reservado',
-  'ocupado',
-  'externo',
+export const standStatus = pgEnum('stand_status', ['disponible', 'reservado', 'ocupado']);
+
+/** Para qué es la mesa. Dimensión aparte del estado. */
+export const standKind = pgEnum('stand_kind', [
+  'arte',
+  'comida',
+  'emprendimiento',
+  'organizacion',
 ]);
 export const reservationStatus = pgEnum('reservation_status', [
   'pendiente',
@@ -111,6 +114,7 @@ export const sectors = pgTable(
     code: text('code').notNull(),
     name: text('name').notNull(),
     description: text('description').notNull().default(''),
+    kind: standKind('kind').notNull().default('arte'),
     x: integer('x').notNull(),
     y: integer('y').notNull(),
     width: integer('width').notNull(),
@@ -136,6 +140,7 @@ export const stands = pgTable(
     width: integer('width').notNull(),
     height: integer('height').notNull(),
     status: standStatus('status').notNull().default('disponible'),
+    kind: standKind('kind').notNull().default('arte'),
     /** Nombre del ocupante cuando es espacio de la organización. */
     externalName: text('external_name'),
     priceBob: integer('price_bob').notNull(),

@@ -1,7 +1,8 @@
 CREATE TYPE "public"."convocatoria_audience" AS ENUM('artistas', 'comidas', 'emprendimientos');--> statement-breakpoint
 CREATE TYPE "public"."payment_method" AS ENUM('qr');--> statement-breakpoint
 CREATE TYPE "public"."reservation_status" AS ENUM('pendiente', 'confirmada', 'expirada', 'cancelada');--> statement-breakpoint
-CREATE TYPE "public"."stand_status" AS ENUM('disponible', 'reservado', 'ocupado', 'externo');--> statement-breakpoint
+CREATE TYPE "public"."stand_kind" AS ENUM('arte', 'comida', 'emprendimiento', 'organizacion');--> statement-breakpoint
+CREATE TYPE "public"."stand_status" AS ENUM('disponible', 'reservado', 'ocupado');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('asistente', 'expositor', 'staff');--> statement-breakpoint
 CREATE TABLE "activities" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -82,6 +83,7 @@ CREATE TABLE "sectors" (
 	"code" text NOT NULL,
 	"name" text NOT NULL,
 	"description" text DEFAULT '' NOT NULL,
+	"kind" "stand_kind" DEFAULT 'arte' NOT NULL,
 	"x" integer NOT NULL,
 	"y" integer NOT NULL,
 	"width" integer NOT NULL,
@@ -98,6 +100,7 @@ CREATE TABLE "stands" (
 	"width" integer NOT NULL,
 	"height" integer NOT NULL,
 	"status" "stand_status" DEFAULT 'disponible' NOT NULL,
+	"kind" "stand_kind" DEFAULT 'arte' NOT NULL,
 	"external_name" text,
 	"price_bob" integer NOT NULL
 );

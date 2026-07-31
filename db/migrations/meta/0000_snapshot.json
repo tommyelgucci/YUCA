@@ -1,5 +1,5 @@
 {
-  "id": "f08d99ec-6be0-41a1-bf82-8a24a1ef935c",
+  "id": "4ca03c02-c18e-40f6-a77a-d685928fb141",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -659,6 +659,14 @@
           "notNull": true,
           "default": "''"
         },
+        "kind": {
+          "name": "kind",
+          "type": "stand_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'arte'"
+        },
         "x": {
           "name": "x",
           "type": "integer",
@@ -789,6 +797,14 @@
           "notNull": true,
           "default": "'disponible'"
         },
+        "kind": {
+          "name": "kind",
+          "type": "stand_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'arte'"
+        },
         "external_name": {
           "name": "external_name",
           "type": "text",
@@ -908,14 +924,23 @@
         "cancelada"
       ]
     },
+    "public.stand_kind": {
+      "name": "stand_kind",
+      "schema": "public",
+      "values": [
+        "arte",
+        "comida",
+        "emprendimiento",
+        "organizacion"
+      ]
+    },
     "public.stand_status": {
       "name": "stand_status",
       "schema": "public",
       "values": [
         "disponible",
         "reservado",
-        "ocupado",
-        "externo"
+        "ocupado"
       ]
     },
     "public.user_role": {

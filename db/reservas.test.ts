@@ -239,9 +239,10 @@ test('cancelar una reserva devuelve la mesa al mapa', async () => {
 test('no se puede reservar una mesa de la organización', async () => {
   const { db, ana } = await baseDePrueba();
 
+  // Los espacios del equipo nunca se ponen a la venta: van ya ocupados.
   await db
     .update(schema.stands)
-    .set({ status: 'externo', externalName: 'Acreditación' })
+    .set({ status: 'ocupado', kind: 'organizacion', externalName: 'Acreditación' })
     .where(eq(schema.stands.code, 'C21'));
 
   const resultado = await reservarStand(db, {

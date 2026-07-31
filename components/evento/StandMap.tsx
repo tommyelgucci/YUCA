@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { Minus, Plus, RotateCcw } from 'lucide-react';
-import { ESTADOS, PLANO, referencias, sectores, stands } from '@/lib/data/feria';
+import { ESTADOS, PLANO, ZONAS, referencias, sectores, stands } from '@/lib/data/feria';
 import { getExpositorPorStand } from '@/lib/data/expositores';
 import type { SelectionOrigin } from '@/hooks/useStandSelection';
 
@@ -96,9 +96,6 @@ export default function StandMap({ selectedId, origin, onSelect }: Props) {
             <pattern id="trama-reservado" width="8" height="8" patternUnits="userSpaceOnUse">
               <path d="M0,8 l8,-8" className="stroke-yuca-mustard" strokeWidth="2.5" />
             </pattern>
-            <pattern id="trama-externo" width="6" height="6" patternUnits="userSpaceOnUse">
-              <circle cx="3" cy="3" r="1.1" className="fill-white/70" />
-            </pattern>
           </defs>
 
           {/* Sectores */}
@@ -150,14 +147,22 @@ export default function StandMap({ selectedId, origin, onSelect }: Props) {
             </g>
           ))}
 
-          {/* Stands */}
+          {/* Stands.
+              Dos dimensiones a la vez: el borde dice de qué zona es la mesa
+              (arte, comida, emprendimiento, organización) y el relleno dice si
+              se puede pedir. Así una mesa de comida libre no se confunde con
+              una de arte libre. */}
           {stands.map((stand) => {
             const estado = ESTADOS[stand.status];
+            const zona = ZONAS[stand.kind];
             const expositor = getExpositorPorStand(stand.id);
             const isSelected = selectedId === stand.id;
+            const ocupada = stand.status === 'ocupado';
 
-            const ocupante =
-              expositor?.displayName ?? stand.externalName ?? estado.label.toLowerCase();
+            const ocupante = expositor?.displayName ?? stand.externalName;
+            const descripcion = ocupante
+              ? `${estado.label}. ${zona.label}. ${ocupante}.`
+              : `${estado.label}. ${zona.label}.`;
 
             return (
               <g
@@ -166,7 +171,7 @@ export default function StandMap({ selectedId, origin, onSelect }: Props) {
                 role="button"
                 tabIndex={0}
                 aria-pressed={isSelected}
-                aria-label={`Stand ${stand.id}. ${estado.label}. ${ocupante}.`}
+                aria-label={`Stand ${stand.id}. ${descripcion}`}
                 className="cursor-pointer outline-none [&:focus-visible>rect:first-of-type]:stroke-yuca-coral"
                 onClick={() => onSelect(stand.id, 'mapa')}
                 onKeyDown={(event) => {
@@ -182,11 +187,11 @@ export default function StandMap({ selectedId, origin, onSelect }: Props) {
                   width={stand.width}
                   height={stand.height}
                   rx="9"
-                  className={`${estado.fill} ${estado.stroke} transition-[filter] duration-200 hover:brightness-105`}
-                  strokeWidth="1.5"
+                  className={`${ocupada ? zona.fill : 'fill-white'} ${zona.stroke} transition-[filter] duration-200 hover:brightness-105`}
+                  strokeWidth={ocupada ? 1.5 : 2}
                 />
 
-                {/* Trama por estado, encima del relleno */}
+                {/* Trama de "pago pendiente", encima del relleno */}
                 {stand.status === 'reservado' && (
                   <rect
                     x={stand.x}
@@ -195,18 +200,7 @@ export default function StandMap({ selectedId, origin, onSelect }: Props) {
                     height={stand.height}
                     rx="9"
                     fill="url(#trama-reservado)"
-                    opacity="0.55"
-                    pointerEvents="none"
-                  />
-                )}
-                {stand.status === 'externo' && (
-                  <rect
-                    x={stand.x}
-                    y={stand.y}
-                    width={stand.width}
-                    height={stand.height}
-                    rx="9"
-                    fill="url(#trama-externo)"
+                    opacity="0.75"
                     pointerEvents="none"
                   />
                 )}
@@ -217,7 +211,7 @@ export default function StandMap({ selectedId, origin, onSelect }: Props) {
                   textAnchor="middle"
                   fontSize="13"
                   fontWeight="800"
-                  className={`${estado.text} pointer-events-none select-none`}
+                  className={`${ocupada ? zona.text : 'fill-yuca-ink'} pointer-events-none select-none`}
                 >
                   {stand.id}
                 </text>
