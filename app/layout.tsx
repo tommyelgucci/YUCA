@@ -30,7 +30,7 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const documento = (
+  return (
     <html lang="es">
       <head>
         {/* Tipografías de marca: Baloo 2 (display) + Nunito (cuerpo).
@@ -44,11 +44,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen bg-yuca-bg font-body text-yuca-ink">
-        <SiteChrome>{children}</SiteChrome>
+        {/* Sin claves de Clerk la web funciona igual, sólo que sin cuentas. */}
+        {authEnabled ? (
+          <ClerkProvider>
+            <SiteChrome>{children}</SiteChrome>
+          </ClerkProvider>
+        ) : (
+          <SiteChrome>{children}</SiteChrome>
+        )}
       </body>
     </html>
   );
-
-  // Sin claves de Clerk la web funciona igual, sólo que sin cuentas.
-  return authEnabled ? <ClerkProvider>{documento}</ClerkProvider> : documento;
 }

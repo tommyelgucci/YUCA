@@ -10,6 +10,7 @@ import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useMotionPresets } from '@/hooks/useMotionPresets';
 import Mascot from './Mascot';
 import SocialLinks from './SocialLinks';
+import AccountActions from './AccountActions';
 
 /**
  * Panel de navegación móvil.
@@ -96,20 +97,7 @@ export default function MobileMenu({ id, open, onClose, links, onOpenAuth }) {
             </nav>
 
             <div className="mt-auto flex flex-col gap-3 border-t border-yuca-green/10 px-5 py-6">
-              <button
-                type="button"
-                onClick={() => handleAuth('signup')}
-                className="btn-primary btn-lg w-full"
-              >
-                Crear cuenta
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAuth('login')}
-                className="btn-outline btn-lg w-full"
-              >
-                Iniciar sesión
-              </button>
+              <AccountActions onOpenAuth={handleAuth} onNavigate={onClose} layout="columna" />
 
               <div className="pt-3">
                 <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-yuca-ink-soft">
