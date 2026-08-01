@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, ArrowUpRight, Clock3, MapPin, X } from 'lucide-react';
-import { ESTADOS, ZONAS, getStand } from '@/lib/data/feria';
+import { ESTADOS, ZONAS, espaciosPorId, getStand } from '@/lib/data/feria';
 import { getExpositorPorStand } from '@/lib/data/expositores';
-import { sectores } from '@/lib/data/feria';
 import { useMotionPresets } from '@/hooks/useMotionPresets';
 import { Avatar, CategoryBadge, VerifiedBadge } from '@/components/ui/Badges';
 import { ctaMesa } from '@/lib/data/convocatorias';
+import { precioActual, preventaVigente } from '@/lib/data/preventas';
 import ExpositorSocials from './ExpositorSocials';
 import { bs } from '@/lib/utils';
 
@@ -30,7 +30,8 @@ export default function StandDetail({
 
   const stand = getStand(standId);
   const expositor = getExpositorPorStand(standId);
-  const sector = sectores.find((s) => s.id === stand?.sectorId);
+  const espacio = stand ? espaciosPorId.get(stand.espacioId) : undefined;
+  const precio = stand ? precioActual(stand.kind) : null;
 
   return (
     <AnimatePresence mode="wait">
@@ -54,10 +55,10 @@ export default function StandDetail({
           </button>
 
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="pill bg-yuca-green-deep text-white">Stand {stand.id}</span>
-            <span className="pill bg-yuca-cream text-yuca-ink-soft">
-              {ZONAS[stand.kind].label}
+            <span className="pill bg-yuca-green-deep text-white">
+              {ZONAS[stand.kind].label} {stand.numero}
             </span>
+            <span className="pill bg-yuca-cream text-yuca-ink-soft">{espacio?.name}</span>
             <span className="text-xs font-bold text-yuca-ink-soft">
               {ESTADOS[stand.status].label}
             </span>
@@ -74,7 +75,7 @@ export default function StandDetail({
                     {expositor.verified && <VerifiedBadge />}
                   </h3>
                   <p className="mt-0.5 flex items-center gap-1 text-xs text-yuca-ink-soft">
-                    <MapPin size={12} aria-hidden="true" /> {sector?.name}
+                    <MapPin size={12} aria-hidden="true" /> {espacio?.name}
                   </p>
                 </div>
               </div>
@@ -106,8 +107,7 @@ export default function StandDetail({
             <div>
               <h3 className="mb-1 text-lg">{stand.externalName}</h3>
               <p className="text-sm leading-relaxed text-yuca-ink-soft">
-                Espacio de la organización en {sector?.name}. No forma parte de la feria de
-                artistas.
+                Espacio de la organización en {espacio?.name}. No se pone a la venta.
               </p>
             </div>
           ) : stand.status === 'reservado' ? (
@@ -125,8 +125,14 @@ export default function StandDetail({
             <div>
               <h3 className="mb-1 text-lg">Mesa disponible</h3>
               <p className="mb-4 text-sm leading-relaxed text-yuca-ink-soft">
-                {sector?.name} · zona de {ZONAS[stand.kind].label.toLowerCase()} ·{' '}
-                {bs(stand.priceBob)} por la edición completa.
+                {precio !== null && preventaVigente ? (
+                  <>
+                    <span className="font-bold text-yuca-ink">{bs(precio)}</span> en la{' '}
+                    {preventaVigente.label.toLowerCase()}. El precio sube en la tanda siguiente.
+                  </>
+                ) : (
+                  'Precio por confirmar en la próxima preventa.'
+                )}
               </p>
               {/* El destino lo decide `ctaMesa()`: el formulario si la
                   convocatoria está abierta, el Discord si la fase ya cerró. */}

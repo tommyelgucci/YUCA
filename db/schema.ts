@@ -28,9 +28,10 @@ export const standStatus = pgEnum('stand_status', ['disponible', 'reservado', 'o
 
 /** Para qué es la mesa. Dimensión aparte del estado. */
 export const standKind = pgEnum('stand_kind', [
-  'arte',
-  'comida',
+  'ilustrador',
   'emprendimiento',
+  'tienda',
+  'comida',
   'organizacion',
 ]);
 export const reservationStatus = pgEnum('reservation_status', [
@@ -104,8 +105,15 @@ export const editions = pgTable('editions', {
   reservationTtlMinutes: integer('reservation_ttl_minutes').notNull().default(2880),
 });
 
-export const sectors = pgTable(
-  'sectors',
+/**
+ * Sala del recinto (Salón Lirio, Patio Orquídea).
+ *
+ * La geometría del dibujo —contorno, escenario, entradas— vive en el código
+ * (`lib/data/feria.ts`) porque es del local y no cambia por edición. Aquí sólo
+ * está lo que hace falta para relacionar mesas con su sala.
+ */
+export const espacios = pgTable(
+  'espacios',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     editionId: text('edition_id')
@@ -114,13 +122,8 @@ export const sectors = pgTable(
     code: text('code').notNull(),
     name: text('name').notNull(),
     description: text('description').notNull().default(''),
-    kind: standKind('kind').notNull().default('arte'),
-    x: integer('x').notNull(),
-    y: integer('y').notNull(),
-    width: integer('width').notNull(),
-    height: integer('height').notNull(),
   },
-  (table) => [uniqueIndex('sectors_edition_code_key').on(table.editionId, table.code)],
+  (table) => [uniqueIndex('espacios_edition_code_key').on(table.editionId, table.code)],
 );
 
 export const stands = pgTable(
@@ -130,20 +133,25 @@ export const stands = pgTable(
     editionId: text('edition_id')
       .notNull()
       .references(() => editions.id, { onDelete: 'cascade' }),
-    sectorId: uuid('sector_id')
+    espacioId: uuid('espacio_id')
       .notNull()
-      .references(() => sectors.id, { onDelete: 'cascade' }),
-    /** Código visible: 'C20'. Único dentro de su edición. */
+      .references(() => espacios.id, { onDelete: 'cascade' }),
+    /** Código único: 'I13', 'E7'. Letra del tipo + número del plano. */
     code: text('code').notNull(),
+    /** Número tal cual sale impreso en el plano. */
+    numero: integer('numero').notNull(),
     x: integer('x').notNull(),
     y: integer('y').notNull(),
     width: integer('width').notNull(),
     height: integer('height').notNull(),
+    /** Giro en grados; las mesas en diagonal del plano real. */
+    rotate: integer('rotate'),
     status: standStatus('status').notNull().default('disponible'),
-    kind: standKind('kind').notNull().default('arte'),
+    kind: standKind('kind').notNull().default('ilustrador'),
+    /** Acompañantes admitidos además del titular. */
+    maxCompaneros: integer('max_companeros').notNull().default(1),
     /** Nombre del ocupante cuando es espacio de la organización. */
     externalName: text('external_name'),
-    priceBob: integer('price_bob').notNull(),
   },
   (table) => [
     uniqueIndex('stands_edition_code_key').on(table.editionId, table.code),
@@ -176,6 +184,12 @@ export const reservations = pgTable(
       .references(() => exhibitors.id, { onDelete: 'cascade' }),
     status: reservationStatus('status').notNull().default('pendiente'),
     method: paymentMethod('method').notNull().default('qr'),
+    /**
+     * Tanda de preventa en la que se compró, y el importe que regía entonces.
+     * Se congela aquí a propósito: abrir la siguiente preventa sube el precio
+     * de las mesas libres, pero no puede cambiar lo que ya acordó alguien.
+     */
+    preventaId: text('preventa_id'),
     amountBob: integer('amount_bob').notNull(),
     /** Referencia de la transferencia que declara el expositor. */
     proofReference: text('proof_reference'),
@@ -200,6 +214,33 @@ export const reservations = pgTable(
       .where(sql`${table.status} in ('pendiente', 'confirmada')`),
     index('reservations_status_idx').on(table.status),
   ],
+);
+
+/**
+ * Compañero de mesa.
+ *
+ * Quien tiene la mesa pagada puede sumar a alguien que la comparta.
+ *
+ * Cuelga de la reserva, no de la mesa. Cancelar una reserva no borra su fila
+ * —queda como historial— así que los acompañantes siguen colgando de ella;
+ * lo que importa es que la reserva siguiente sobre esa misma mesa nace sin
+ * ninguno, que es la garantía que hace falta.
+ */
+export const standCompanions = pgTable(
+  'stand_companions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    reservationId: uuid('reservation_id')
+      .notNull()
+      .references(() => reservations.id, { onDelete: 'cascade' }),
+    displayName: text('display_name').notNull(),
+    /** Perfil de expositor del acompañante, si también tiene cuenta. */
+    exhibitorId: uuid('exhibitor_id').references(() => exhibitors.id, { onDelete: 'set null' }),
+    instagram: text('instagram'),
+    contacto: text('contacto'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('stand_companions_reservation_idx').on(table.reservationId)],
 );
 
 /* -------------------------------------------------------------------------- */
@@ -254,19 +295,19 @@ export const activityRegistrations = pgTable(
 /* -------------------------------------------------------------------------- */
 
 export const editionsRelations = relations(editions, ({ many }) => ({
-  sectors: many(sectors),
+  espacios: many(espacios),
   stands: many(stands),
   activities: many(activities),
 }));
 
-export const sectorsRelations = relations(sectors, ({ one, many }) => ({
-  edition: one(editions, { fields: [sectors.editionId], references: [editions.id] }),
+export const espaciosRelations = relations(espacios, ({ one, many }) => ({
+  edition: one(editions, { fields: [espacios.editionId], references: [editions.id] }),
   stands: many(stands),
 }));
 
 export const standsRelations = relations(stands, ({ one, many }) => ({
   edition: one(editions, { fields: [stands.editionId], references: [editions.id] }),
-  sector: one(sectors, { fields: [stands.sectorId], references: [sectors.id] }),
+  espacio: one(espacios, { fields: [stands.espacioId], references: [espacios.id] }),
   reservations: many(reservations),
 }));
 
@@ -274,9 +315,17 @@ export const exhibitorsRelations = relations(exhibitors, ({ many }) => ({
   reservations: many(reservations),
 }));
 
-export const reservationsRelations = relations(reservations, ({ one }) => ({
+export const reservationsRelations = relations(reservations, ({ one, many }) => ({
   stand: one(stands, { fields: [reservations.standId], references: [stands.id] }),
   exhibitor: one(exhibitors, { fields: [reservations.exhibitorId], references: [exhibitors.id] }),
+  companions: many(standCompanions),
+}));
+
+export const standCompanionsRelations = relations(standCompanions, ({ one }) => ({
+  reservation: one(reservations, {
+    fields: [standCompanions.reservationId],
+    references: [reservations.id],
+  }),
 }));
 
 export const activitiesRelations = relations(activities, ({ one, many }) => ({

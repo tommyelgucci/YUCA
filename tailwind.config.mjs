@@ -42,6 +42,17 @@ export default {
             soft: '#6b6153',
           },
         },
+        /**
+         * Colores del plano impreso de la feria. No son de la identidad Yuca a
+         * propósito: se respetan tal cual para que quien ya vio el mapa en
+         * redes reconozca el mismo código de color en la web.
+         */
+        feria: {
+          verde: { DEFAULT: '#4CE04C', deep: '#2FA82F' },
+          morado: { DEFAULT: '#8B14C8', deep: '#5E0D89' },
+          rosa: { DEFAULT: '#F04A80', deep: '#C22B5C' },
+          celeste: { DEFAULT: '#7FA8F0', deep: '#4E77C4' },
+        },
         // Paleta Frutiger Aero / Y2K, sólo para el banner de edición especial.
         aero: {
           foam: '#e9fbff',

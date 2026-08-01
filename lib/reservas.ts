@@ -1,6 +1,6 @@
 import { and, eq, inArray, lt, sql } from 'drizzle-orm';
 import type { YucaDb } from '@/db';
-import { editions, exhibitors, reservations, stands } from '@/db/schema';
+import { editions, exhibitors, reservations, standCompanions, stands } from '@/db/schema';
 
 /**
  * Reservas de mesa.
@@ -69,14 +69,21 @@ function esViolacionUnica(error: unknown, indice: string): boolean {
  */
 export async function reservarStand(
   db: YucaDb,
-  params: { editionId: string; standCode: string; exhibitorId: string },
+  params: {
+    editionId: string;
+    standCode: string;
+    exhibitorId: string;
+    /** Tanda vigente e importe que rige en ella; se congelan en la reserva. */
+    preventaId: string;
+    amountBob: number;
+  },
 ): Promise<ResultadoReserva> {
-  const { editionId, standCode, exhibitorId } = params;
+  const { editionId, standCode, exhibitorId, preventaId, amountBob } = params;
 
   try {
     return await db.transaction(async (tx) => {
       const [stand] = await tx
-        .select({ id: stands.id, status: stands.status, priceBob: stands.priceBob })
+        .select({ id: stands.id, status: stands.status })
         .from(stands)
         .where(and(eq(stands.editionId, editionId), eq(stands.code, standCode)))
         .limit(1);
@@ -99,7 +106,8 @@ export async function reservarStand(
         .values({
           standId: stand.id,
           exhibitorId,
-          amountBob: stand.priceBob,
+          preventaId,
+          amountBob,
           expiresAt,
         })
         .returning({ id: reservations.id });
@@ -217,6 +225,113 @@ export async function expirarReservasVencidas(db: YucaDb, ahora = new Date()): P
     return vencidas.length;
   });
 }
+
+/* -------------------------------------------------------------------------- */
+/* Compañeros de mesa                                                          */
+/* -------------------------------------------------------------------------- */
+
+export type ResultadoCompanero =
+  | { ok: true; companionId: string }
+  | { ok: false; motivo: 'reserva-inactiva' | 'sin-cupo' | 'no-es-tuya' };
+
+/**
+ * Suma un acompañante a una mesa.
+ *
+ * Se permite desde que la mesa está apartada (no hace falta esperar a que el
+ * staff confirme el pago), porque los artistas suelen cerrar con quién la
+ * comparten antes de transferir. Si la reserva se cae, los acompañantes se van
+ * con ella: cuelgan de la reserva, no de la mesa.
+ *
+ * `exhibitorId` es quien dice ser el titular; se comprueba contra la reserva
+ * para que nadie sume gente a la mesa de otro.
+ */
+export async function agregarCompanero(
+  db: YucaDb,
+  params: {
+    reservationId: string;
+    exhibitorId: string;
+    displayName: string;
+    instagram?: string;
+    contacto?: string;
+  },
+): Promise<ResultadoCompanero> {
+  return db.transaction(async (tx) => {
+    const [reserva] = await tx
+      .select({
+        exhibitorId: reservations.exhibitorId,
+        status: reservations.status,
+        maxCompaneros: stands.maxCompaneros,
+      })
+      .from(reservations)
+      .innerJoin(stands, eq(reservations.standId, stands.id))
+      .where(eq(reservations.id, params.reservationId))
+      .limit(1);
+
+    if (!reserva) return { ok: false, motivo: 'reserva-inactiva' } as const;
+    if (reserva.exhibitorId !== params.exhibitorId) {
+      return { ok: false, motivo: 'no-es-tuya' } as const;
+    }
+    if (reserva.status !== 'pendiente' && reserva.status !== 'confirmada') {
+      return { ok: false, motivo: 'reserva-inactiva' } as const;
+    }
+
+    const [{ total }] = await tx
+      .select({ total: sql<number>`count(*)::int` })
+      .from(standCompanions)
+      .where(eq(standCompanions.reservationId, params.reservationId));
+
+    if (total >= reserva.maxCompaneros) {
+      return { ok: false, motivo: 'sin-cupo' } as const;
+    }
+
+    const [companero] = await tx
+      .insert(standCompanions)
+      .values({
+        reservationId: params.reservationId,
+        displayName: params.displayName.trim(),
+        instagram: params.instagram,
+        contacto: params.contacto,
+      })
+      .returning({ id: standCompanions.id });
+
+    return { ok: true, companionId: companero.id } as const;
+  });
+}
+
+/** Quita un acompañante; sólo el titular de la reserva puede hacerlo. */
+export async function quitarCompanero(
+  db: YucaDb,
+  params: { companionId: string; exhibitorId: string },
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [fila] = await tx
+      .select({ titular: reservations.exhibitorId })
+      .from(standCompanions)
+      .innerJoin(reservations, eq(standCompanions.reservationId, reservations.id))
+      .where(eq(standCompanions.id, params.companionId))
+      .limit(1);
+
+    if (!fila || fila.titular !== params.exhibitorId) return false;
+
+    await tx.delete(standCompanions).where(eq(standCompanions.id, params.companionId));
+    return true;
+  });
+}
+
+export async function companerosDe(db: YucaDb, reservationId: string) {
+  return db
+    .select({
+      id: standCompanions.id,
+      displayName: standCompanions.displayName,
+      instagram: standCompanions.instagram,
+    })
+    .from(standCompanions)
+    .where(eq(standCompanions.reservationId, reservationId));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Consultas del panel                                                         */
+/* -------------------------------------------------------------------------- */
 
 /** Cola de pagos por revisar, de la más antigua a la más reciente. */
 export async function reservasPendientes(db: YucaDb, editionId: string) {

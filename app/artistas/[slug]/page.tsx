@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, MapPin } from 'lucide-react';
 import { expositores } from '@/lib/data/expositores';
-import { getStand, sectores } from '@/lib/data/feria';
+import { ZONAS, espaciosPorId, getStand } from '@/lib/data/feria';
 import { edicionActual } from '@/lib/data/edicion';
 import { Avatar, CategoryBadge, VerifiedBadge } from '@/components/ui/Badges';
 import ExpositorSocials from '@/components/evento/ExpositorSocials';
@@ -35,7 +35,7 @@ export default async function PerfilArtistaPage({
   if (!expositor) notFound();
 
   const stand = getStand(expositor.standId);
-  const sector = sectores.find((s) => s.id === stand?.sectorId);
+  const espacio = stand ? espaciosPorId.get(stand.espacioId) : undefined;
 
   return (
     <article className="container-yuca py-10 sm:py-14">
@@ -68,7 +68,7 @@ export default async function PerfilArtistaPage({
             className="btn-secondary btn-md shrink-0"
           >
             <MapPin size={16} aria-hidden="true" />
-            Stand {stand.id}
+            {ZONAS[stand.kind].label} {stand.numero}
           </Link>
         )}
       </header>
@@ -83,8 +83,9 @@ export default async function PerfilArtistaPage({
           <h2 className="mb-3 text-lg">Dónde encontrarle</h2>
           {stand ? (
             <p className="mb-4 text-sm leading-relaxed text-yuca-ink-soft">
-              Stand <span className="font-bold text-yuca-green-deep">{stand.id}</span> en{' '}
-              {sector?.name}, durante {edicionActual.name}.
+              Mesa <span className="font-bold text-yuca-green-deep">{stand.numero}</span> de{' '}
+              {ZONAS[stand.kind].plural.toLowerCase()}, en {espacio?.name}, durante{' '}
+              {edicionActual.name}.
             </p>
           ) : (
             <p className="mb-4 text-sm leading-relaxed text-yuca-ink-soft">

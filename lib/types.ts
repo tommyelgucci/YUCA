@@ -59,20 +59,7 @@ export interface Exhibitor {
 /* Feria: sectores y stands                                                    */
 /* -------------------------------------------------------------------------- */
 
-export type SectorId = 'lobby' | 'teatro' | 'galeria' | 'comidas';
 
-export interface Sector {
-  id: SectorId;
-  name: string;
-  description: string;
-  /** Tipo de mesa que agrupa la zona. */
-  kind: StandKind;
-  /** Rectángulo del sector dentro del plano, en unidades del viewBox. */
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 /**
  * Estado de un stand: si se puede pedir o no.
@@ -92,12 +79,58 @@ export type StandStatus = 'disponible' | 'reservado' | 'ocupado';
  * ocupan mesa igual que un artista. `organizacion` sí es espacio propio del
  * equipo (acreditación, merch) y nunca se pone a la venta.
  */
-export type StandKind = 'arte' | 'comida' | 'emprendimiento' | 'organizacion';
+export type StandKind =
+  | 'ilustrador'
+  | 'emprendimiento'
+  | 'tienda'
+  | 'comida'
+  | 'organizacion';
+
+/** Espacio físico del recinto. Cada uno tiene su propio plano. */
+export type EspacioId = 'lirio' | 'orquidea';
+
+/** Elemento del plano que no es una mesa: escenario, entrada, estructuras. */
+export interface Landmark {
+  id: string;
+  label?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** `hueco` dibuja un vano en la pared (puertas y conexiones). */
+  variant?: 'sala' | 'hueco' | 'estructura';
+  /** Texto en vertical, para etiquetas altas y estrechas. */
+  vertical?: boolean;
+  /** Dónde va el rótulo. Los vanos son estrechos y no admiten texto dentro. */
+  labelPlacement?: 'dentro' | 'arriba' | 'abajo';
+}
+
+/**
+ * Un espacio del recinto con su plano propio.
+ *
+ * El contorno es un polígono porque las salas reales no son rectángulos: el
+ * Salón Lirio y el Patio Orquídea tienen esquinas en diagonal.
+ */
+export interface Espacio {
+  id: EspacioId;
+  name: string;
+  description: string;
+  viewBox: { width: number; height: number };
+  /** Puntos del polígono del contorno, en unidades del viewBox. */
+  outline: string;
+  landmarks: Landmark[];
+}
 
 export interface Stand {
-  /** Código visible: 'C20', 'A10'. Es también el ancla en la URL. */
+  /**
+   * Código único: 'I13', 'E7', 'C2', 'T1'.
+   * La letra es el tipo de mesa y el número es el que sale impreso en el plano.
+   * Es también el ancla en la URL.
+   */
   id: string;
-  sectorId: SectorId;
+  /** Número tal cual aparece en el plano impreso. */
+  numero: number;
+  espacioId: EspacioId;
   /** Geometría dentro del plano (mismas unidades que el viewBox del SVG). */
   x: number;
   y: number;
@@ -105,12 +138,14 @@ export interface Stand {
   height: number;
   status: StandStatus;
   kind: StandKind;
+  /** Giro en grados sobre su centro; las mesas en diagonal del plano real. */
+  rotate?: number;
+  /** Cuántos acompañantes admite además del titular. */
+  maxCompaneros?: number;
   /** Ocupante confirmado; sólo cuando `status === 'ocupado'`. */
   exhibitorId?: string;
   /** Nombre del ocupante cuando es espacio de la organización. */
   externalName?: string;
-  /** Precio en bolivianos de la mesa. */
-  priceBob: number;
 }
 
 /* -------------------------------------------------------------------------- */

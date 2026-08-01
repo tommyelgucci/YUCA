@@ -2,9 +2,10 @@ import { requireDb } from './index';
 import * as schema from './schema';
 import { edicionActual } from '../lib/data/edicion';
 import { druida } from '../lib/data/eventos';
-import { sectores, stands as standsMock } from '../lib/data/feria';
+import { espacios, stands as standsMock } from '../lib/data/feria';
 import { expositores } from '../lib/data/expositores';
 import { actividades } from '../lib/data/actividades';
+import { preventaVigente, precioActual } from '../lib/data/preventas';
 import type { Edition } from '../lib/types';
 
 /**
@@ -41,33 +42,29 @@ async function seed() {
   await db.delete(schema.activityRegistrations);
   await db.delete(schema.reservations);
   await db.delete(schema.activities);
+  await db.delete(schema.standCompanions);
   await db.delete(schema.stands);
-  await db.delete(schema.sectors);
+  await db.delete(schema.espacios);
   await db.delete(schema.exhibitors);
   await db.delete(schema.editions);
 
   console.log('Ediciones…');
   await db.insert(schema.editions).values([filaEdicion(edicionActual), filaEdicion(druida)]);
 
-  console.log('Sectores…');
-  const sectoresInsertados = await db
-    .insert(schema.sectors)
+  console.log('Espacios…');
+  const espaciosInsertados = await db
+    .insert(schema.espacios)
     .values(
-      sectores.map((sector) => ({
+      espacios.map((espacio) => ({
         editionId: edicionActual.id,
-        code: sector.id,
-        name: sector.name,
-        description: sector.description,
-        kind: sector.kind,
-        x: sector.x,
-        y: sector.y,
-        width: sector.width,
-        height: sector.height,
+        code: espacio.id,
+        name: espacio.name,
+        description: espacio.description,
       })),
     )
-    .returning({ id: schema.sectors.id, code: schema.sectors.code });
+    .returning({ id: schema.espacios.id, code: schema.espacios.code });
 
-  const idPorSector = new Map(sectoresInsertados.map((s) => [s.code, s.id]));
+  const idPorEspacio = new Map(espaciosInsertados.map((e) => [e.code, e.id]));
 
   console.log('Expositores…');
   const expositoresInsertados = await db
@@ -100,16 +97,18 @@ async function seed() {
     .values(
       standsMock.map((stand) => ({
         editionId: edicionActual.id,
-        sectorId: idPorSector.get(stand.sectorId)!,
+        espacioId: idPorEspacio.get(stand.espacioId)!,
         code: stand.id,
+        numero: stand.numero,
         x: stand.x,
         y: stand.y,
         width: stand.width,
         height: stand.height,
+        rotate: stand.rotate,
         status: stand.status,
         kind: stand.kind,
+        maxCompaneros: stand.maxCompaneros ?? 1,
         externalName: stand.externalName,
-        priceBob: stand.priceBob,
       })),
     )
     .returning({ id: schema.stands.id, code: schema.stands.code });
@@ -126,7 +125,9 @@ async function seed() {
       standId: idPorStand.get(expositor.standId!)!,
       exhibitorId: idPorExpositor.get(expositor.slug)!,
       status: 'confirmada' as const,
-      amountBob: standsMock.find((s) => s.id === expositor.standId)?.priceBob ?? 0,
+      preventaId: preventaVigente?.id,
+      amountBob:
+        precioActual(standsMock.find((s) => s.id === expositor.standId)?.kind ?? 'ilustrador') ?? 0,
       proofReference: 'SEED',
       expiresAt: new Date(),
       confirmedBy: 'seed',
@@ -154,7 +155,7 @@ async function seed() {
   );
 
   console.log(
-    `Listo: 2 ediciones, ${sectores.length} sectores, ${standsMock.length} stands, ` +
+    `Listo: 2 ediciones, ${espacios.length} espacios, ${standsMock.length} mesas, ` +
       `${expositores.length} expositores, ${reservasConfirmadas.length} reservas, ` +
       `${actividades.length} actividades.`,
   );

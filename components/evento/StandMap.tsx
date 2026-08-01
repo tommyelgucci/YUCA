@@ -3,13 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { Minus, Plus, RotateCcw } from 'lucide-react';
-import { ESTADOS, PLANO, ZONAS, referencias, sectores, stands } from '@/lib/data/feria';
+import { ESTADOS, ZONAS, espaciosPorId, espacios, standsDeEspacio } from '@/lib/data/feria';
 import { getExpositorPorStand } from '@/lib/data/expositores';
+import type { EspacioId } from '@/lib/types';
 import type { SelectionOrigin } from '@/hooks/useStandSelection';
 
-const ZOOMS = [1, 1.5, 2.25] as const;
+const ZOOMS = [1, 1.6, 2.4] as const;
 
 interface Props {
+  espacioId: EspacioId;
+  onEspacioChange: (espacioId: EspacioId) => void;
   selectedId: string | null;
   origin: SelectionOrigin;
   onSelect: (standId: string, origin: SelectionOrigin) => void;
@@ -18,54 +21,75 @@ interface Props {
 /**
  * Plano interactivo de la feria.
  *
- * El SVG se genera desde `lib/data/feria.ts`: cada stand es un `<g>` con su
- * propio id, enfocable con teclado y con `aria-label` que dice el estado en
- * palabras — el color nunca es la única señal (cada estado tiene además su
- * propia trama, ver la leyenda).
+ * Se genera desde `lib/data/feria.ts`, con el contorno real de cada sala —son
+ * polígonos, no rectángulos— y la posición y giro que tiene cada mesa en el
+ * plano impreso. Cada mesa es un `<g>` enfocable con teclado y con un
+ * `aria-label` que dice tipo, número y estado en palabras.
  */
-export default function StandMap({ selectedId, origin, onSelect }: Props) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+export default function StandMap({
+  espacioId,
+  onEspacioChange,
+  selectedId,
+  origin,
+  onSelect,
+}: Props) {
   const [zoom, setZoom] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
 
-  // Cuando la selección viene de la lista (o de un enlace), hay que traer el
-  // stand al centro del visor; si viene del propio mapa ya está a la vista.
+  const espacio = espaciosPorId.get(espacioId)!;
+  const mesas = standsDeEspacio(espacioId);
+
+  // Selección venida de la lista o de un enlace: hay que traer la mesa a la
+  // vista. Si viene del propio mapa, ya está delante.
   useEffect(() => {
     if (!selectedId || origin === 'mapa') return;
-    const node = document.getElementById(`stand-${selectedId}`);
-    node?.scrollIntoView({
+    document.getElementById(`stand-${selectedId}`)?.scrollIntoView({
       behavior: reduce ? 'auto' : 'smooth',
       block: 'nearest',
       inline: 'center',
     });
-  }, [selectedId, origin, reduce]);
-
-  const zoomIn = () => setZoom((z) => Math.min(z + 1, ZOOMS.length - 1));
-  const zoomOut = () => setZoom((z) => Math.max(z - 1, 0));
+  }, [selectedId, origin, reduce, espacioId]);
 
   return (
     <div className="card overflow-hidden">
-      {/* Controles de zoom: en móvil el plano completo no se lee a 390 px */}
-      <div className="flex items-center justify-between gap-3 border-b border-yuca-green/10 px-4 py-2.5">
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-yuca-ink-soft">
-          Plano de la feria
-        </p>
+      {/* Cambio de espacio: son dos salas conectadas, no un solo plano */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-yuca-green/10 p-2">
+        <div role="tablist" aria-label="Espacio del recinto" className="flex gap-1">
+          {espacios.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={item.id === espacioId}
+              onClick={() => onEspacioChange(item.id)}
+              className={`rounded-2xl px-3.5 py-2 text-sm font-bold transition-colors ${
+                item.id === espacioId
+                  ? 'bg-yuca-green text-white'
+                  : 'text-yuca-ink-soft hover:bg-yuca-cream'
+              }`}
+            >
+              {item.name}
+            </button>
+          ))}
+        </div>
+
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={zoomOut}
+            onClick={() => setZoom((z) => Math.max(z - 1, 0))}
             disabled={zoom === 0}
             className="btn-ghost p-2"
             aria-label="Alejar el plano"
           >
             <Minus size={16} aria-hidden="true" />
           </button>
-          <span className="w-10 text-center text-xs font-bold text-yuca-ink-soft" aria-live="polite">
+          <span className="w-11 text-center text-xs font-bold text-yuca-ink-soft" aria-live="polite">
             {Math.round(ZOOMS[zoom] * 100)}%
           </span>
           <button
             type="button"
-            onClick={zoomIn}
+            onClick={() => setZoom((z) => Math.min(z + 1, ZOOMS.length - 1))}
             disabled={zoom === ZOOMS.length - 1}
             className="btn-ghost p-2"
             aria-label="Acercar el plano"
@@ -83,86 +107,94 @@ export default function StandMap({ selectedId, origin, onSelect }: Props) {
         </div>
       </div>
 
-      <div ref={scrollRef} className="overflow-auto bg-yuca-cream/25 p-3">
+      <div ref={scrollRef} className="overflow-auto bg-yuca-cream/20 p-3">
         <svg
-          viewBox={`0 0 ${PLANO.width} ${PLANO.height}`}
+          viewBox={`-30 -46 ${espacio.viewBox.width + 60} ${espacio.viewBox.height + 92}`}
           className="h-auto"
-          style={{ width: `${ZOOMS[zoom] * 100}%`, minWidth: ZOOMS[zoom] > 1 ? 900 : 520 }}
+          style={{ width: `${ZOOMS[zoom] * 100}%`, minWidth: ZOOMS[zoom] > 1 ? 780 : 420 }}
           role="group"
-          aria-label="Plano interactivo de stands"
+          aria-label={`Plano de ${espacio.name}`}
         >
           <defs>
-            {/* Tramas: el estado no puede depender sólo del color */}
-            <pattern id="trama-reservado" width="8" height="8" patternUnits="userSpaceOnUse">
-              <path d="M0,8 l8,-8" className="stroke-yuca-mustard" strokeWidth="2.5" />
+            {/* La mesa apartada lleva trama además de color: el estado no puede
+                depender sólo del relleno. */}
+            <pattern id="trama-reservada" width="9" height="9" patternUnits="userSpaceOnUse">
+              <path d="M0,9 l9,-9" className="stroke-yuca-ink/45" strokeWidth="3" />
             </pattern>
           </defs>
 
-          {/* Sectores */}
-          {sectores.map((sector) => (
-            <g key={sector.id}>
-              <rect
-                x={sector.x}
-                y={sector.y}
-                width={sector.width}
-                height={sector.height}
-                rx="22"
-                className="fill-white/70 stroke-yuca-green/25"
-                strokeWidth="1.5"
-                strokeDasharray="6 5"
-              />
-              <text
-                x={sector.x + 16}
-                y={sector.y + 26}
-                className="fill-yuca-green-deep font-display"
-                fontSize="19"
-              >
-                {sector.name}
-              </text>
-            </g>
-          ))}
+          {/* Contorno de la sala */}
+          <polygon
+            points={espacio.outline}
+            className="fill-white stroke-yuca-green/40"
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
 
-          {/* Referencias del recinto */}
-          {referencias.map((ref) => (
-            <g key={ref.id}>
-              <rect
-                x={ref.x}
-                y={ref.y}
-                width={ref.width}
-                height={ref.height}
-                rx="10"
-                className="fill-yuca-cream stroke-yuca-cream-deep"
-                strokeWidth="1.5"
-              />
-              <text
-                x={ref.x + ref.width / 2}
-                y={ref.y + ref.height / 2 + 4}
-                textAnchor="middle"
-                className="fill-yuca-ink-soft"
-                fontSize="12"
-                fontWeight="700"
-              >
-                {ref.label}
-              </text>
-            </g>
-          ))}
+          {/* Escenario, entradas y estructuras */}
+          {espacio.landmarks.map((landmark) => {
+            const cx = landmark.x + landmark.width / 2;
+            const cy = landmark.y + landmark.height / 2;
 
-          {/* Stands.
-              Dos dimensiones a la vez: el borde dice de qué zona es la mesa
-              (arte, comida, emprendimiento, organización) y el relleno dice si
-              se puede pedir. Así una mesa de comida libre no se confunde con
-              una de arte libre. */}
-          {stands.map((stand) => {
-            const estado = ESTADOS[stand.status];
+            return (
+              <g key={landmark.id}>
+                <rect
+                  x={landmark.x}
+                  y={landmark.y}
+                  width={landmark.width}
+                  height={landmark.height}
+                  rx={landmark.variant === 'hueco' ? 4 : 10}
+                  className={
+                    landmark.variant === 'estructura'
+                      ? 'fill-yuca-cream-deep/70 stroke-yuca-cream-deep'
+                      : landmark.variant === 'hueco'
+                        ? 'fill-yuca-mustard/70 stroke-yuca-mustard-deep'
+                        : 'fill-yuca-cream stroke-yuca-cream-deep'
+                  }
+                  strokeWidth="1.5"
+                />
+                {landmark.label && (
+                  <text
+                    x={cx}
+                    y={
+                      landmark.labelPlacement === 'arriba'
+                        ? landmark.y - 10
+                        : landmark.labelPlacement === 'abajo'
+                          ? landmark.y + landmark.height + 24
+                          : cy + 6
+                    }
+                    textAnchor="middle"
+                    className="fill-yuca-ink-soft"
+                    fontSize={landmark.labelPlacement && landmark.labelPlacement !== 'dentro' ? 17 : 19}
+                    fontWeight="800"
+                    transform={landmark.vertical ? `rotate(-90 ${cx} ${cy})` : undefined}
+                  >
+                    {landmark.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Mesas.
+              El color dice de qué tipo es (los mismos del plano impreso) y el
+              relleno dice si se puede pedir: blanca libre, con trama apartada,
+              sólida pagada. */}
+          {mesas.map((stand) => {
             const zona = ZONAS[stand.kind];
+            const estado = ESTADOS[stand.status];
             const expositor = getExpositorPorStand(stand.id);
             const isSelected = selectedId === stand.id;
-            const ocupada = stand.status === 'ocupado';
+            const pagada = stand.status === 'ocupado';
+
+            const cx = stand.x + stand.width / 2;
+            const cy = stand.y + stand.height / 2;
+            const giro = stand.rotate ? `rotate(${stand.rotate} ${cx} ${cy})` : undefined;
 
             const ocupante = expositor?.displayName ?? stand.externalName;
-            const descripcion = ocupante
-              ? `${estado.label}. ${zona.label}. ${ocupante}.`
-              : `${estado.label}. ${zona.label}.`;
+            const etiqueta = `${zona.label} ${stand.numero}. ${estado.label}.${
+              ocupante ? ` ${ocupante}.` : ''
+            }`;
 
             return (
               <g
@@ -171,8 +203,9 @@ export default function StandMap({ selectedId, origin, onSelect }: Props) {
                 role="button"
                 tabIndex={0}
                 aria-pressed={isSelected}
-                aria-label={`Stand ${stand.id}. ${descripcion}`}
-                className="cursor-pointer outline-none [&:focus-visible>rect:first-of-type]:stroke-yuca-coral"
+                aria-label={etiqueta}
+                transform={giro}
+                className="cursor-pointer outline-none [&:focus-visible>rect:first-of-type]:stroke-yuca-ink"
                 onClick={() => onSelect(stand.id, 'mapa')}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -186,47 +219,44 @@ export default function StandMap({ selectedId, origin, onSelect }: Props) {
                   y={stand.y}
                   width={stand.width}
                   height={stand.height}
-                  rx="9"
-                  className={`${ocupada ? zona.fill : 'fill-white'} ${zona.stroke} transition-[filter] duration-200 hover:brightness-105`}
-                  strokeWidth={ocupada ? 1.5 : 2}
+                  rx="5"
+                  className={`${pagada ? zona.fill : 'fill-white'} ${zona.stroke} transition-[filter] duration-200 hover:brightness-110`}
+                  strokeWidth={pagada ? 2 : 3}
                 />
 
-                {/* Trama de "pago pendiente", encima del relleno */}
                 {stand.status === 'reservado' && (
                   <rect
                     x={stand.x}
                     y={stand.y}
                     width={stand.width}
                     height={stand.height}
-                    rx="9"
-                    fill="url(#trama-reservado)"
-                    opacity="0.75"
+                    rx="5"
+                    fill="url(#trama-reservada)"
                     pointerEvents="none"
                   />
                 )}
 
                 <text
-                  x={stand.x + stand.width / 2}
-                  y={stand.y + stand.height / 2 + 4}
+                  x={cx}
+                  y={cy + 8}
                   textAnchor="middle"
-                  fontSize="13"
+                  fontSize="24"
                   fontWeight="800"
-                  className={`${ocupada ? zona.text : 'fill-yuca-ink'} pointer-events-none select-none`}
+                  className={`${pagada ? zona.text : 'fill-yuca-ink'} pointer-events-none select-none`}
                 >
-                  {stand.id}
+                  {stand.numero}
                 </text>
 
-                {/* Realce del stand seleccionado */}
                 {isSelected && (
                   <rect
-                    x={stand.x - 4}
-                    y={stand.y - 4}
-                    width={stand.width + 8}
-                    height={stand.height + 8}
-                    rx="13"
+                    x={stand.x - 6}
+                    y={stand.y - 6}
+                    width={stand.width + 12}
+                    height={stand.height + 12}
+                    rx="10"
                     fill="none"
-                    className="stroke-yuca-coral motion-safe:animate-pulse"
-                    strokeWidth="3"
+                    className="stroke-yuca-ink motion-safe:animate-pulse"
+                    strokeWidth="4"
                     pointerEvents="none"
                   />
                 )}

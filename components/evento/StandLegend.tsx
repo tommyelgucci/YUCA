@@ -18,7 +18,13 @@ const MUESTRA_ESTADO: Record<StandStatus, string> = {
 };
 
 const ORDEN_ESTADO: StandStatus[] = ['disponible', 'reservado', 'ocupado'];
-const ORDEN_ZONA: StandKind[] = ['arte', 'comida', 'emprendimiento', 'organizacion'];
+const ORDEN_ZONA: StandKind[] = [
+  'ilustrador',
+  'emprendimiento',
+  'tienda',
+  'comida',
+  'organizacion',
+];
 
 export default function StandLegend() {
   return (
@@ -55,7 +61,7 @@ export default function StandLegend() {
                 aria-hidden="true"
               />
               <span className="text-sm">
-                <span className="font-bold text-yuca-green-deep">{ZONAS[kind].label}</span>
+                <span className="font-bold text-yuca-green-deep">{ZONAS[kind].plural}</span>
                 <span className="text-yuca-ink-soft"> — {ZONAS[kind].help}</span>
               </span>
             </li>

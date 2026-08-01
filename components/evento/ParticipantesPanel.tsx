@@ -4,22 +4,32 @@ import { useEffect, useMemo, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { MapPin, Search } from 'lucide-react';
 import { expositores } from '@/lib/data/expositores';
+import { ZONAS, getStand } from '@/lib/data/feria';
 import { useStandSelection } from '@/hooks/useStandSelection';
+import type { EspacioId, StandKind } from '@/lib/types';
 import { Avatar, VerifiedBadge } from '@/components/ui/Badges';
 import StandMap from './StandMap';
 import StandLegend from './StandLegend';
 import StandDetail from './StandDetail';
 import ExpositorSocials from './ExpositorSocials';
 
-/** Tipos de participante presentes en la feria. */
-const TIPOS = [
+/**
+ * El tipo de un participante se deduce de la mesa que ocupa, no de su perfil:
+ * el plano es la fuente de verdad de quién es ilustrador, tienda o comida.
+ */
+const TIPOS: { id: 'todos' | StandKind; label: string }[] = [
   { id: 'todos', label: 'Todos' },
-  { id: 'artistas', label: 'Arte' },
-  { id: 'comidas', label: 'Comidas' },
-  { id: 'emprendimientos', label: 'Emprendimientos' },
-] as const;
+  { id: 'ilustrador', label: ZONAS.ilustrador.plural },
+  { id: 'emprendimiento', label: ZONAS.emprendimiento.plural },
+  { id: 'tienda', label: ZONAS.tienda.plural },
+  { id: 'comida', label: ZONAS.comida.plural },
+];
 
 type TipoId = (typeof TIPOS)[number]['id'];
+
+function tipoDe(expositor: (typeof expositores)[number]): StandKind | undefined {
+  return getStand(expositor.standId)?.kind;
+}
 
 /** Categorías de arte presentes en esta edición, para el segundo filtro. */
 function categoriasDisponibles() {
@@ -28,10 +38,11 @@ function categoriasDisponibles() {
   return ['Todas', ...Array.from(set).sort()];
 }
 
-/** Qué se muestra bajo el nombre: sus categorías, o el tipo si no es artista. */
+/** Bajo el nombre: sus categorías de arte, o el tipo de mesa si no es artista. */
 function subtitulo(expositor: (typeof expositores)[number]): string {
   if (expositor.categories.length > 0) return expositor.categories.join(' · ');
-  return TIPOS.find((t) => t.id === expositor.audience)?.label ?? '';
+  const kind = tipoDe(expositor);
+  return kind ? ZONAS[kind].label : '';
 }
 
 /**
@@ -42,6 +53,7 @@ export default function ParticipantesPanel() {
   const { selected, origin, select } = useStandSelection();
   const [query, setQuery] = useState('');
   const [tipo, setTipo] = useState<TipoId>('todos');
+  const [espacioId, setEspacioId] = useState<EspacioId>('lirio');
   const [categoria, setCategoria] = useState('Todas');
   const reduce = useReducedMotion();
 
@@ -55,15 +67,23 @@ export default function ParticipantesPanel() {
         e.displayName.toLowerCase().includes(q) ||
         e.standId?.toLowerCase().includes(q) ||
         e.categories.some((c) => c.toLowerCase().includes(q));
-      const coincideTipo = tipo === 'todos' || e.audience === tipo;
+      const coincideTipo = tipo === 'todos' || tipoDe(e) === tipo;
       const coincideCategoria =
         categoria === 'Todas' || e.categories.includes(categoria as never);
       return coincideTexto && coincideTipo && coincideCategoria;
     });
   }, [query, tipo, categoria]);
 
-  // La categoría de arte sólo tiene sentido mirando arte.
-  const mostrarCategorias = tipo === 'todos' || tipo === 'artistas';
+  // La categoría de arte sólo tiene sentido mirando ilustradores.
+  const mostrarCategorias = tipo === 'todos' || tipo === 'ilustrador';
+
+  /** Elegir a alguien de la lista lleva el mapa a su sala y resalta su mesa. */
+  const irAMesa = (standId: string | undefined) => {
+    if (!standId) return;
+    const stand = getStand(standId);
+    if (stand) setEspacioId(stand.espacioId);
+    select(standId, 'lista');
+  };
 
   // Selección hecha en el mapa -> traer su tarjeta a la vista en la lista.
   useEffect(() => {
@@ -81,7 +101,13 @@ export default function ParticipantesPanel() {
           min-width:auto, así que el ancho mínimo del plano estiraría la página
           entera en móvil en vez de hacer scroll dentro de su tarjeta. */}
       <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-24">
-        <StandMap selectedId={selected} origin={origin.current} onSelect={select} />
+        <StandMap
+          espacioId={espacioId}
+          onEspacioChange={setEspacioId}
+          selectedId={selected}
+          origin={origin.current}
+          onSelect={select}
+        />
         <StandLegend />
         <StandDetail standId={selected} onClose={() => selected && select(selected, 'mapa')} />
       </div>
@@ -194,8 +220,8 @@ export default function ParticipantesPanel() {
                   {/* Este botón es el puente lista -> mapa */}
                   <button
                     type="button"
-                    onClick={() => expositor.standId && select(expositor.standId, 'lista')}
-                    aria-label={`Ver el stand ${expositor.standId} de ${expositor.displayName} en el mapa`}
+                    onClick={() => irAMesa(expositor.standId)}
+                    aria-label={`Ver la mesa de ${expositor.displayName} en el mapa`}
                     className={`flex shrink-0 items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-extrabold transition-colors ${
                       isSelected
                         ? 'bg-yuca-coral text-white'
@@ -203,7 +229,7 @@ export default function ParticipantesPanel() {
                     }`}
                   >
                     <MapPin size={13} aria-hidden="true" />
-                    {expositor.standId}
+                    {getStand(expositor.standId)?.numero ?? expositor.standId}
                   </button>
                 </div>
               </li>

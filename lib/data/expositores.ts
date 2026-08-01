@@ -18,7 +18,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Retratos y fanart con paleta nocturna. Prints, stickers holográficos y comisiones en vivo.',
     socials: { instagram: '#', tiktok: '#' },
-    standId: 'C22',
+    standId: 'I33',
   },
   {
     id: 'papaya',
@@ -30,7 +30,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Historieta boliviana de humor cotidiano. Tomo 3 recién salido de imprenta.',
     socials: { instagram: '#', web: '#' },
-    standId: 'C23',
+    standId: 'I5',
   },
   {
     id: 'cactus',
@@ -42,7 +42,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Pines esmaltados de flora y fauna boliviana. Series limitadas de 50 piezas.',
     socials: { instagram: '#' },
-    standId: 'D2',
+    standId: 'I6',
   },
   {
     id: 'mishi',
@@ -54,7 +54,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Gatos, plantas y personajes redonditos. Comisiones abiertas todo el festival.',
     socials: { instagram: '#', tiktok: '#', facebook: '#' },
-    standId: 'D3',
+    standId: 'I10',
   },
   {
     id: 'tinta-verde',
@@ -66,7 +66,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Acuarela botánica y paisajes del valle. Originales enmarcados y láminas A4.',
     socials: { instagram: '#' },
-    standId: 'C1',
+    standId: 'I13',
   },
   {
     id: 'colibri',
@@ -78,7 +78,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Colectivo de tres ilustradoras cruceñas. Tinta, linograbado y mucho color.',
     socials: { instagram: '#', facebook: '#' },
-    standId: 'C2',
+    standId: 'I14',
   },
   {
     id: 'wawita',
@@ -90,7 +90,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Webcomic semanal sobre crecer en Bolivia. Más de 60 capítulos publicados.',
     socials: { instagram: '#', tiktok: '#', web: '#' },
-    standId: 'C3',
+    standId: 'I15',
   },
   {
     id: 'sirena',
@@ -102,7 +102,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Mitología y leyendas locales reinterpretadas en clave fantasía.',
     socials: { instagram: '#' },
-    standId: 'C7',
+    standId: 'I21',
   },
   {
     id: 'chaco',
@@ -114,7 +114,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Stickers die-cut y packs temáticos. Tres por el precio de dos todo el día.',
     socials: { tiktok: '#' },
-    standId: 'C8',
+    standId: 'I25',
   },
   {
     id: 'nube',
@@ -126,7 +126,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Novela gráfica autoconclusiva y fanzines cosidos a mano.',
     socials: { instagram: '#', web: '#' },
-    standId: 'C13',
+    standId: 'I26',
   },
   {
     id: 'pixel-yuca',
@@ -138,7 +138,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Pixel art y retratos estilo consola de 16 bits. Comisiones en vivo.',
     socials: { instagram: '#', tiktok: '#' },
-    standId: 'C19',
+    standId: 'I30',
   },
   {
     id: 'tornillo',
@@ -150,7 +150,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Humor absurdo en viñetas. Fanzines, stickers y mucho contenido de gato.',
     socials: { instagram: '#', facebook: '#' },
-    standId: 'C20',
+    standId: 'I20',
   },
   {
     id: 'nogal',
@@ -162,7 +162,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Grafito y tinta china. Retratos por encargo durante todo el evento.',
     socials: { instagram: '#' },
-    standId: 'D1',
+    standId: 'I11',
   },
   {
     id: 'raiz',
@@ -174,7 +174,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Antología digital de autores emergentes. Lecturas y firmas en el teatro.',
     socials: { instagram: '#', web: '#', tiktok: '#' },
-    standId: 'E1',
+    standId: 'I1',
   },
 
   /* --- Emprendimientos --- */
@@ -188,7 +188,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Ropa y accesorios con diseño boliviano. Poleras, tote bags y gorras.',
     socials: { instagram: '#' },
-    standId: 'A3',
+    standId: 'E1',
   },
   {
     id: 'telar',
@@ -200,7 +200,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Textiles tejidos a mano por artesanas del altiplano.',
     socials: { instagram: '#', facebook: '#' },
-    standId: 'A4',
+    standId: 'E9',
   },
 
   /* --- Comidas --- */
@@ -214,7 +214,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Salteñas de pollo y carne, recién horneadas durante todo el evento.',
     socials: { facebook: '#' },
-    standId: 'F1',
+    standId: 'C1',
   },
   {
     id: 'matcha',
@@ -226,7 +226,7 @@ export const expositores: Exhibitor[] = [
     avatar: null,
     bio: 'Bebidas frías de matcha, café y limonadas de la casa.',
     socials: { instagram: '#', tiktok: '#' },
-    standId: 'F2',
+    standId: 'C2',
   },
 ];
 

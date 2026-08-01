@@ -7,7 +7,9 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import * as schema from './schema';
 import type { YucaDb } from './index';
 import {
+  agregarCompanero,
   cancelarReserva,
+  companerosDe,
   confirmarPago,
   expirarReservasVencidas,
   registrarComprobante,
@@ -25,6 +27,9 @@ import {
 
 const EDICION = 'yukawaii-4';
 
+/** Tanda e importe vigentes; los fija quien llama, no la base. */
+const TANDA = { preventaId: 'preventa-2', amountBob: 300 } as const;
+
 /** Base limpia y sembrada para cada prueba. */
 async function baseDePrueba() {
   const client = new PGlite();
@@ -41,22 +46,14 @@ async function baseDePrueba() {
     reservationTtlMinutes: 2880,
   });
 
-  const [sector] = await db
-    .insert(schema.sectors)
-    .values({
-      editionId: EDICION,
-      code: 'galeria',
-      name: 'Galería',
-      x: 40,
-      y: 330,
-      width: 420,
-      height: 330,
-    })
-    .returning({ id: schema.sectors.id });
+  const [espacio] = await db
+    .insert(schema.espacios)
+    .values({ editionId: EDICION, code: 'lirio', name: 'Salón Lirio' })
+    .returning({ id: schema.espacios.id });
 
   await db.insert(schema.stands).values([
-    { editionId: EDICION, sectorId: sector.id, code: 'C20', x: 0, y: 0, width: 56, height: 44, priceBob: 250 },
-    { editionId: EDICION, sectorId: sector.id, code: 'C21', x: 64, y: 0, width: 56, height: 44, priceBob: 250 },
+    { editionId: EDICION, espacioId: espacio.id, code: 'C20', numero: 20, x: 0, y: 0, width: 56, height: 44 },
+    { editionId: EDICION, espacioId: espacio.id, code: 'C21', numero: 21, x: 64, y: 0, width: 56, height: 44 },
   ]);
 
   const artistas = await db
@@ -88,6 +85,7 @@ test('reservar una mesa libre la deja apartada, no ocupada', async () => {
     editionId: EDICION,
     standCode: 'C20',
     exhibitorId: ana,
+    ...TANDA,
   });
 
   assert.equal(resultado.ok, true);
@@ -97,8 +95,8 @@ test('reservar una mesa libre la deja apartada, no ocupada', async () => {
 test('dos personas no pueden reservar la misma mesa', async () => {
   const { db, ana, beto, estadoStand } = await baseDePrueba();
 
-  const primera = await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana });
-  const segunda = await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: beto });
+  const primera = await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana, ...TANDA });
+  const segunda = await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: beto, ...TANDA });
 
   assert.equal(primera.ok, true);
   assert.equal(segunda.ok, false);
@@ -109,8 +107,8 @@ test('en una carrera por la misma mesa gana exactamente una', async () => {
   const { db, ana, beto } = await baseDePrueba();
 
   const resultados = await Promise.all([
-    reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana }),
-    reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: beto }),
+    reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana, ...TANDA }),
+    reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: beto, ...TANDA }),
   ]);
 
   assert.equal(resultados.filter((r) => r.ok).length, 1);
@@ -119,11 +117,12 @@ test('en una carrera por la misma mesa gana exactamente una', async () => {
 test('un expositor no puede apartar dos mesas a la vez', async () => {
   const { db, ana } = await baseDePrueba();
 
-  await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana });
+  await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana, ...TANDA });
   const segunda = await reservarStand(db, {
     editionId: EDICION,
     standCode: 'C21',
     exhibitorId: ana,
+    ...TANDA,
   });
 
   assert.equal(segunda.ok, false);
@@ -137,6 +136,7 @@ test('confirmar el pago deja la mesa ocupada y registra quién lo hizo', async (
     editionId: EDICION,
     standCode: 'C20',
     exhibitorId: ana,
+    ...TANDA,
   });
   assert.equal(reserva.ok, true);
   if (!reserva.ok) return;
@@ -171,7 +171,7 @@ test('confirmar el pago deja la mesa ocupada y registra quién lo hizo', async (
 test('una reserva vencida libera la mesa y permite reservarla de nuevo', async () => {
   const { db, ana, beto, estadoStand } = await baseDePrueba();
 
-  await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana });
+  await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana, ...TANDA });
 
   // El plazo por defecto son 48 h: se mira el mundo dos días más tarde.
   const pasadoManana = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -184,6 +184,7 @@ test('una reserva vencida libera la mesa y permite reservarla de nuevo', async (
     editionId: EDICION,
     standCode: 'C20',
     exhibitorId: beto,
+    ...TANDA,
   });
   assert.equal(nueva.ok, true);
 });
@@ -195,6 +196,7 @@ test('una reserva confirmada no expira aunque pase el plazo', async () => {
     editionId: EDICION,
     standCode: 'C20',
     exhibitorId: ana,
+    ...TANDA,
   });
   if (!reserva.ok) throw new Error('la reserva debería haber entrado');
 
@@ -216,6 +218,7 @@ test('cancelar una reserva devuelve la mesa al mapa', async () => {
     editionId: EDICION,
     standCode: 'C20',
     exhibitorId: ana,
+    ...TANDA,
   });
   if (!reserva.ok) throw new Error('la reserva debería haber entrado');
 
@@ -232,6 +235,7 @@ test('cancelar una reserva devuelve la mesa al mapa', async () => {
     editionId: EDICION,
     standCode: 'C20',
     exhibitorId: beto,
+    ...TANDA,
   });
   assert.equal(nueva.ok, true);
 });
@@ -249,6 +253,7 @@ test('no se puede reservar una mesa de la organización', async () => {
     editionId: EDICION,
     standCode: 'C21',
     exhibitorId: ana,
+    ...TANDA,
   });
 
   assert.equal(resultado.ok, false);
@@ -258,7 +263,7 @@ test('no se puede reservar una mesa de la organización', async () => {
 test('la base impide la doble reserva aunque el estado del stand se desincronice', async () => {
   const { db, ana, beto } = await baseDePrueba();
 
-  await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana });
+  await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana, ...TANDA });
 
   // Se fuerza el estado a 'disponible' con la reserva de Ana todavía viva: así
   // el guardia de la aplicación no salta y quien tiene que rechazar es el
@@ -272,8 +277,117 @@ test('la base impide la doble reserva aunque el estado del stand se desincronice
     editionId: EDICION,
     standCode: 'C20',
     exhibitorId: beto,
+    ...TANDA,
   });
 
   assert.equal(segunda.ok, false);
   assert.equal(segunda.ok === false && segunda.motivo, 'ya-reservada');
+});
+
+test('el titular puede sumar un compañero de mesa', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) throw new Error('la reserva debería haber entrado');
+
+  const resultado = await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    displayName: 'Guamancita',
+    instagram: '@guamancita',
+  });
+
+  assert.equal(resultado.ok, true);
+  assert.deepEqual(
+    (await companerosDe(db, reserva.reservationId)).map((c) => c.displayName),
+    ['Guamancita'],
+  );
+});
+
+test('nadie puede sumar compañeros a la mesa de otro', async () => {
+  const { db, ana, beto } = await baseDePrueba();
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) throw new Error('la reserva debería haber entrado');
+
+  const intruso = await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: beto,
+    displayName: 'Colado',
+  });
+
+  assert.equal(intruso.ok, false);
+  assert.equal(intruso.ok === false && intruso.motivo, 'no-es-tuya');
+  assert.equal((await companerosDe(db, reserva.reservationId)).length, 0);
+});
+
+test('la mesa no admite más compañeros que su cupo', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) throw new Error('la reserva debería haber entrado');
+
+  // El cupo por defecto es 1 acompañante.
+  const primero = await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    displayName: 'Primera',
+  });
+  const segundo = await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    displayName: 'Segunda',
+  });
+
+  assert.equal(primero.ok, true);
+  assert.equal(segundo.ok, false);
+  assert.equal(segundo.ok === false && segundo.motivo, 'sin-cupo');
+});
+
+test('la mesa liberada queda sin compañeros para el siguiente', async () => {
+  const { db, ana, beto } = await baseDePrueba();
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) throw new Error('la reserva debería haber entrado');
+
+  await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    displayName: 'Guamancita',
+  });
+  await cancelarReserva(db, { reservationId: reserva.reservationId, motivo: 'Se arrepintió' });
+
+  // La reserva cancelada conserva su historial…
+  assert.equal((await companerosDe(db, reserva.reservationId)).length, 1);
+
+  // …pero quien tome la mesa después empieza de cero.
+  const nueva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: beto,
+    ...TANDA,
+  });
+  if (!nueva.ok) throw new Error('la mesa debería haber quedado libre');
+
+  assert.equal((await companerosDe(db, nueva.reservationId)).length, 0);
 });
