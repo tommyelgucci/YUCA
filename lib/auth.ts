@@ -38,6 +38,18 @@ export async function esStaff(): Promise<boolean> {
   return (await getRol()) === 'staff';
 }
 
+/**
+ * ¿Puede esta petición entrar al panel de administración?
+ *
+ * Con Clerk configurado manda el rol. Sin configurar sólo se abre fuera de
+ * producción, para poder desarrollar el panel antes de dar de alta las cuentas;
+ * un despliegue real sin claves queda cerrado, no abierto de par en par.
+ */
+export async function puedeAdministrar(): Promise<boolean> {
+  if (authEnabled) return esStaff();
+  return process.env.NODE_ENV !== 'production';
+}
+
 /** Nombre para mostrar de quien está conectado, si lo hay. */
 export async function getNombreUsuario(): Promise<string | null> {
   if (!authEnabled) return null;

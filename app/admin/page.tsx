@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
-import { AlertTriangle, BadgeCheck, Inbox } from 'lucide-react';
+import Link from 'next/link';
+import { AlertTriangle, BadgeCheck, FileSpreadsheet, Inbox } from 'lucide-react';
 import { getDb } from '@/db';
-import { authEnabled, esStaff } from '@/lib/auth';
+import { authEnabled, puedeAdministrar } from '@/lib/auth';
 import { perfilesPorVerificar } from '@/lib/perfiles';
 import { reservasPendientes } from '@/lib/reservas';
 import { edicionActual } from '@/lib/data/edicion';
@@ -56,8 +57,8 @@ export default async function AdminPage() {
     );
   }
 
-  // El middleware garantiza sesión; el rol se comprueba aquí.
-  if (!(await esStaff())) {
+  // El middleware garantiza que hay sesión; el permiso se comprueba aquí.
+  if (!(await puedeAdministrar())) {
     return (
       <div className="container-yuca py-12">
         <h1 className="mb-6 text-3xl">Administración</h1>
@@ -77,13 +78,20 @@ export default async function AdminPage() {
   return (
     <div className="container-yuca flex flex-col gap-12 py-12">
       <section>
-        <header className="mb-8">
-          <h1 className="mb-2 text-3xl">Pagos por revisar</h1>
-          <p className="text-yuca-ink-soft">
-            {edicionActual.name} · {pendientes.length}{' '}
-            {pendientes.length === 1 ? 'reserva pendiente' : 'reservas pendientes'}. Compara la
-            referencia con tu extracto y confirma o rechaza.
-          </p>
+        <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="mb-2 text-3xl">Pagos por revisar</h1>
+            <p className="text-yuca-ink-soft">
+              {edicionActual.name} · {pendientes.length}{' '}
+              {pendientes.length === 1 ? 'reserva pendiente' : 'reservas pendientes'}. Compara la
+              referencia con tu extracto y confirma o rechaza.
+            </p>
+          </div>
+
+          <Link href="/admin/exportar" className="btn-outline btn-md shrink-0">
+            <FileSpreadsheet size={17} aria-hidden="true" />
+            Exportar credenciales
+          </Link>
         </header>
 
         {pendientes.length === 0 ? (

@@ -28,6 +28,7 @@ sin claves de Clerk oculta las cuentas y el panel. Para activarlos, copia
 | `/evento`           | Vista del festival con pestañas Info · Participantes · Actividades |
 | `/artistas/[slug]`  | Perfil público del expositor                                  |
 | `/admin`            | Cola de pagos y de perfiles por verificar (sólo rol `staff`)  |
+| `/admin/exportar`   | Credenciales a Excel/CSV para Illustrator                     |
 | `/mi-cuenta`        | El expositor edita su perfil y sus datos, elige mesa y declara su pago |
 | `/iniciar-sesion`, `/crear-cuenta` | Clerk                                         |
 | `/api/cron/expirar-reservas` | Libera mesas con la reserva vencida                  |
@@ -250,6 +251,30 @@ Los eventos próximos viven en [`lib/data/eventos.ts`](lib/data/eventos.ts):
 | --------------- | -------------------------------- | -------------- |
 | Druida          | 19 de septiembre de 2026          | sí, plano pendiente de sede |
 | YukaWaii Fest 4 | Noviembre 2026, día por confirmar | sí             |
+
+## Exportación de credenciales
+
+`/admin/exportar` genera el listado para imprimir los gafetes con datos
+variables de Illustrator. Descarga en **.xlsx** (para revisar) y **.csv** (el
+que leen los scripts de datos variables y el combinado de InDesign).
+
+Tres decisiones que lo hacen servible:
+
+- **Una fila por persona, no por mesa.** Quien comparte mesa también lleva
+  credencial, así que titular y acompañantes salen en filas propias. Exportar
+  por reserva dejaría a la mitad de la gente sin gafete.
+- **Cabeceras sin espacios ni tildes** (`nombre_artistico`, `mesa_codigo`…),
+  porque cada una se convierte en el nombre de una variable en Illustrator.
+- **Columna `foto_archivo`** con el nombre que debe tener cada imagen
+  (`I20-1.png`): dejas las fotos en una carpeta con esos nombres y la variable
+  de imagen las enlaza sola. `qr_texto` lleva el enlace al perfil público, para
+  imprimir un QR en cada gafete.
+
+El CSV sale con BOM UTF-8: sin él, Excel en Windows abre el archivo en ANSI y
+destroza cada tilde y cada ñ — justo lo que más abunda en estos nombres.
+
+Sin `DATABASE_URL` funciona igual con los datos de `lib/data/`, así se puede
+ajustar la plantilla de Illustrator antes de tener la base montada.
 
 ## Convocatorias
 
