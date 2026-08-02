@@ -85,11 +85,40 @@ El audio compartido (`AUDIO20260731125818_2.m4a`) no se pudo transcribir con
 las herramientas de esta sesión (sólo lee binarios de imagen/PDF/notebook). Si
 tiene información relevante, conviene pasarla como texto.
 
+### Referencia de Glitter (otro festival), 2026-08-02
+
+Se compartieron 3 grabaciones de pantalla de `glitter.com.bo` (otro festival
+boliviano) como referencia de diseño, sin construir nada todavía a partir de
+ellas — quedan anotadas para cuando se retomen:
+
+1. **Perfil con datos públicos y privados separados.** Su "mi cuenta" tiene
+   dos bloques: "Perfil Público" (avatar, insignia verificado, categoría,
+   bio, redes con botón agregar/quitar por red) e "Información Personal",
+   visible sólo para el staff, con nombre completo, fecha de nacimiento,
+   correo, teléfono, género y departamento de residencia. Hoy `lib/perfiles.ts`
+   sólo tiene el lado público y el perfil no se puede editar después de
+   creado — ambas cosas quedarían por sumar si se retoma esto. Requeriría
+   columnas nuevas en `exhibitors` (o una tabla aparte) para los datos
+   privados.
+2. **Cacería de Sellos, spec de referencia para la Fase 3.** Su versión: se
+   compra un "Pasaporte" (Bs, en su stand), se junta un sello físico (propio,
+   máximo 5 cm de diámetro) por cada stand visitado, tope de 50 inscritos a
+   la actividad, hay que subir el diseño del sello al sitio antes de una
+   fecha límite, y exige tener una reserva de entrada confirmada para poder
+   inscribirse. Nuestra nota de "necesita tolerar mala señal" (abajo) sigue
+   aplicando aparte de esto.
+3. **Mapa público por sectores con multi-ocupante por mesa.** Su vista de
+   participantes agrupa el plano en sectores (Galería, Teatro, Lobby) con
+   leyenda Disponible/Ocupado/Externo, y una misma mesa puede mostrar más de
+   un expositor a la vez (ej. "Shooter" y "Guamancita" comparten la C20).
+   Nuestro modelo ya soporta varios expositores por mesa vía acompañantes,
+   pero `StandDetail.tsx` hoy sólo muestra al titular, no a la lista completa.
+
 ## Fase 3 (después de cerrar la 2)
 
 - Inscripción a actividades con control de cupos real (hoy sólo se muestran).
 - Cacería de Sellos con QR — debe tolerar mala señal dentro del salón (offline-
-  first o cola de reintentos, a decidir).
+  first o cola de reintentos, a decidir). Ver referencia de Glitter arriba.
 
 ## Decisiones abiertas / pendientes de datos reales
 
