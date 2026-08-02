@@ -5,10 +5,15 @@ al final de una fase.
 
 ## Última actualización
 
-**2026-08-02** — segunda mitad de la Fase 2 sobre `85b80f3`, en dos bloques:
-primero `/mi-cuenta` y la cola de verificación, después la edición de perfil y
-la separación público/personal (tomada de la referencia de Glitter). `npm test`
-en verde: 21 pruebas (14 de reservas + 7 de perfiles).
+**2026-08-02** — segunda mitad de la Fase 2 en dos bloques: primero
+`/mi-cuenta` y la cola de verificación, después la edición de perfil y la
+separación público/personal. Fusionado `main` (PR #3: exportación de
+credenciales y Clerk realineado), que había avanzado en paralelo. `npm test` en
+verde: 30 pruebas (14 reservas + 7 perfiles + 9 credenciales).
+
+⚠️ **Lo más importante de esta actualización está abajo**, en "Requisitos del
+audio de la organización": hay tres cosas que el pliego pide y que no existen
+(control de edad, el tipo de perfil Tienda y el QR de pago).
 
 ## Hecho
 
@@ -109,19 +114,13 @@ es una decisión de producto, no puramente técnica — conviene confirmarla
 antes de tocar `StandMap.tsx` / `ParticipantesPanel.tsx`, que hoy están bien
 probados visualmente contra los mocks.
 
-### Otro hallazgo, sin tocar
+### Otro hallazgo — ya resuelto por el PR #3
 
-El botón "Iniciar sesión" / "Crear cuenta" del `Header` abre `RegisterModal`
-(un modal local que no llega a crear cuenta real) en vez de llevar a
-`/iniciar-sesion` o `/crear-cuenta`, que sí son Clerk de verdad. Es
-inconsistente pero no lo cambié: decidir si el modal se retira o se conecta al
-Clerk real es una decisión de producto/UX, no algo para resolver de paso.
-
-### Sin poder procesar
-
-El audio compartido (`AUDIO20260731125818_2.m4a`) no se pudo transcribir con
-las herramientas de esta sesión (sólo lee binarios de imagen/PDF/notebook). Si
-tiene información relevante, conviene pasarla como texto.
+El botón "Iniciar sesión" / "Crear cuenta" del `Header` abría un modal local
+que no creaba cuenta real. Lo arregló el PR #3 con
+`components/layout/AccountActions.tsx`: con Clerk configurado son enlaces
+reales y `UserButton`; sin claves siguen cayendo al modal, que ahora sólo
+explica que las cuentas no están activas todavía.
 
 ### Referencia de Glitter (otro festival), 2026-08-02
 
@@ -148,6 +147,47 @@ ellas — quedan anotadas para cuando se retomen:
    un expositor a la vez (ej. "Shooter" y "Guamancita" comparten la C20).
    Nuestro modelo ya soporta varios expositores por mesa vía acompañantes,
    pero `StandDetail.tsx` hoy sólo muestra al titular, no a la lista completa.
+
+## Requisitos del audio de la organización (2026-07-31)
+
+Transcritos y pasados a texto por quien lleva el proyecto. Es la primera vez
+que hay un pliego de requisitos de la organización, así que manda sobre lo que
+yo hubiera supuesto. Marcado contra lo que ya existe:
+
+**Registro y perfiles**
+- Nombre artístico ✅, nombre real ✅ (`full_name`), edad ✅ (`birth_date`).
+  "Constancia" aparece en el audio y no quedó claro a qué se refiere —
+  conviene confirmarlo antes de modelarlo.
+- ❌ **Control de edad, sin implementar y es regla dura**: menores de 17 no
+  entran; 17 y 18 requieren permiso de padre/madre o tutor legal; mayores de
+  18, libres. Hoy `birth_date` se guarda pero nadie la valida, y no hay dónde
+  registrar ese permiso. Necesita columna(s) nuevas y validación en el alta.
+- ⚠️ **Los cuatro tipos de perfil no cuadran con el enum actual.** El audio
+  pide Artista, Emprendimiento, Tienda y Gastronomía; `convocatoria_audience`
+  sólo tiene `artistas`, `comidas` y `emprendimientos`. Falta **Tienda**, que
+  sí existe como tipo de mesa (`stand_kind.tienda`) desde el PR #2. Arreglarlo
+  es una migración de enum.
+- ❌ Sección de colaboradores / patrocinadores destacados. No existe nada.
+
+**Inscripción a la feria**
+- ❌ Aceptación de términos, condiciones y reglas fijas antes de reservar. No
+  existe; habría que registrar quién aceptó y cuándo.
+- Mapa por bloques con libre / reservado / ocupado ✅.
+- Compartir mesa ✅, pero con un matiz pendiente: el audio pide que el
+  compañero sea **un usuario registrado y verificado** de la plataforma, y hoy
+  `stand_companions.display_name` es texto libre (la columna `exhibitor_id`
+  existe pero la interfaz no la usa).
+- ❌ Instrucciones de ingreso (horarios, cómo entrar) en la confirmación.
+- Plazo de 2–3 días esperando el pago ✅ (`reservationTtlMinutes`, hoy 48 h).
+- ⚠️ **Pago por QR: falta el QR.** Hoy la persona declara la referencia de su
+  transferencia, pero la plataforma no le muestra ningún código QR para pagar.
+  Falta saber si el QR es fijo de la organización o uno por reserva.
+- Pantalla final de confirmación ✅ parcial (el panel dice "Mesa confirmada",
+  pero no es la pantalla de "¡Felicidades!" que describe el audio).
+
+**Exportación**
+- Excel con todos los datos ✅ y alimentar variables de Illustrator para
+  imprimir credenciales ✅ — lo cubrió el PR #3 en `/admin/exportar`.
 
 ## Fase 3 (después de cerrar la 2)
 
