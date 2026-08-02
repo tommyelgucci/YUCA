@@ -6,6 +6,8 @@ import { perfilPorClerkId } from '@/lib/perfiles';
 import { companerosDe, reservaActivaDe, standsDisponibles } from '@/lib/reservas';
 import { edicionActual } from '@/lib/data/edicion';
 import FormularioPerfil from './FormularioPerfil';
+import PerfilPublico from './PerfilPublico';
+import DatosPrivados from './DatosPrivados';
 import ElegirStand from './ElegirStand';
 import PanelReserva from './PanelReserva';
 
@@ -68,9 +70,45 @@ export default async function MiCuentaPage() {
       </header>
 
       {!perfil ? (
-        <FormularioPerfil />
+        <div className="card p-6 sm:p-8">
+          <h2 className="mb-1 text-2xl">Crea tu perfil de expositor</h2>
+          <p className="mb-6 text-sm text-yuca-ink-soft">
+            Es lo que va a ver la gente en tu página pública y en la lista de participantes. Tus
+            datos personales se cargan después, en su propia sección.
+          </p>
+          <FormularioPerfil />
+        </div>
       ) : (
-        <PanelDeExpositor perfilId={perfil.id} slug={perfil.slug} db={db} />
+        <div className="flex flex-col gap-5">
+          <PerfilPublico
+            valores={{
+              displayName: perfil.displayName,
+              audience: perfil.audience,
+              categories: perfil.categories,
+              bio: perfil.bio,
+              instagram: perfil.instagram,
+              tiktok: perfil.tiktok,
+              facebook: perfil.facebook,
+              web: perfil.web,
+            }}
+            slug={perfil.slug}
+            verified={perfil.verified}
+            avatarUrl={perfil.avatarUrl}
+          />
+
+          <DatosPrivados
+            datos={{
+              fullName: perfil.fullName,
+              birthDate: perfil.birthDate,
+              contactEmail: perfil.contactEmail,
+              phone: perfil.phone,
+              gender: perfil.gender,
+              department: perfil.department,
+            }}
+          />
+
+          <PanelDeExpositor perfilId={perfil.id} slug={perfil.slug} db={db} />
+        </div>
       )}
     </div>
   );

@@ -5,7 +5,15 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import * as schema from './schema';
 import type { YucaDb } from './index';
-import { crearPerfil, marcarVerificado, perfilesPorVerificar, perfilPorClerkId } from '../lib/perfiles';
+import {
+  actualizarDatosPrivados,
+  actualizarPerfilPublico,
+  crearPerfil,
+  marcarVerificado,
+  perfilesPorVerificar,
+  perfilPorClerkId,
+  perfilPublicoPorSlug,
+} from '../lib/perfiles';
 
 /**
  * Pruebas del alta de perfil de expositor y su verificación por el staff.
@@ -83,6 +91,100 @@ test('dos perfiles con el mismo nombre no chocan de slug', async () => {
 
   assert.equal(ana?.slug, 'cactus-morado');
   assert.equal(beto?.slug, 'cactus-morado-2');
+});
+
+test('editar el perfil no cambia el slug ya publicado', async () => {
+  const { db } = await baseDePrueba();
+
+  await crearPerfil(db, {
+    clerkUserId: 'user_ana',
+    displayName: 'Estudio Lunaria',
+    audience: 'artistas',
+    categories: [],
+    bio: '',
+  });
+
+  const antes = await perfilPorClerkId(db, 'user_ana');
+  const hecho = await actualizarPerfilPublico(db, {
+    exhibitorId: antes!.id,
+    displayName: 'Lunaria Prints',
+    audience: 'artistas',
+    categories: ['Stickers'],
+    bio: 'Ahora también stickers.',
+    instagram: 'https://instagram.com/lunaria',
+  });
+  assert.equal(hecho, true);
+
+  const despues = await perfilPorClerkId(db, 'user_ana');
+  assert.equal(despues?.displayName, 'Lunaria Prints');
+  assert.deepEqual(despues?.categories, ['Stickers']);
+  assert.equal(despues?.instagram, 'https://instagram.com/lunaria');
+  // Lo importante: la URL pública sigue siendo la que ya compartió.
+  assert.equal(despues?.slug, 'estudio-lunaria');
+});
+
+test('los datos personales se guardan y no salen en la consulta pública', async () => {
+  const { db } = await baseDePrueba();
+
+  await crearPerfil(db, {
+    clerkUserId: 'user_ana',
+    displayName: 'Estudio Lunaria',
+    audience: 'artistas',
+    categories: [],
+    bio: '',
+  });
+
+  const perfil = await perfilPorClerkId(db, 'user_ana');
+  await actualizarDatosPrivados(db, {
+    exhibitorId: perfil!.id,
+    fullName: 'Ana Quiroga',
+    birthDate: '1999-03-29',
+    contactEmail: 'ana@ejemplo.bo',
+    phone: '59169006784',
+    gender: 'Femenino',
+    department: 'Santa Cruz',
+  });
+
+  // Ella los ve completos en su propia cuenta…
+  const propio = await perfilPorClerkId(db, 'user_ana');
+  assert.equal(propio?.fullName, 'Ana Quiroga');
+  assert.equal(propio?.birthDate, '1999-03-29');
+  assert.equal(propio?.phone, '59169006784');
+
+  // …y la web pública no recibe ninguno de esos campos.
+  const publico = await perfilPublicoPorSlug(db, 'estudio-lunaria');
+  assert.equal(publico?.displayName, 'Estudio Lunaria');
+  for (const campo of ['fullName', 'birthDate', 'contactEmail', 'phone', 'gender', 'department']) {
+    assert.equal(campo in publico!, false, `la consulta pública filtró ${campo}`);
+  }
+});
+
+test('el staff sí ve los datos personales de la cola por verificar', async () => {
+  const { db } = await baseDePrueba();
+
+  await crearPerfil(db, {
+    clerkUserId: 'user_ana',
+    displayName: 'Estudio Lunaria',
+    audience: 'artistas',
+    categories: [],
+    bio: '',
+  });
+
+  const perfil = await perfilPorClerkId(db, 'user_ana');
+  await actualizarDatosPrivados(db, {
+    exhibitorId: perfil!.id,
+    fullName: 'Ana Quiroga',
+    birthDate: null,
+    contactEmail: null,
+    phone: '59169006784',
+    gender: null,
+    department: 'Santa Cruz',
+  });
+
+  const [enCola] = await perfilesPorVerificar(db);
+  assert.equal(enCola.fullName, 'Ana Quiroga');
+  assert.equal(enCola.phone, '59169006784');
+  assert.equal(enCola.department, 'Santa Cruz');
 });
 
 test('el staff verifica un perfil y deja de aparecer en la cola', async () => {

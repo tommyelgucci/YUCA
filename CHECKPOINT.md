@@ -5,10 +5,10 @@ al final de una fase.
 
 ## Última actualización
 
-**2026-08-02** — construida la segunda mitad de la Fase 2 sobre `85b80f3`:
-`/mi-cuenta` completo y `/admin` con cola de verificación de perfiles. Ver
-detalle abajo. `npm test` en verde (18 pruebas: 14 de reservas + 4 de
-perfiles).
+**2026-08-02** — segunda mitad de la Fase 2 sobre `85b80f3`, en dos bloques:
+primero `/mi-cuenta` y la cola de verificación, después la edición de perfil y
+la separación público/personal (tomada de la referencia de Glitter). `npm test`
+en verde: 21 pruebas (14 de reservas + 7 de perfiles).
 
 ## Hecho
 
@@ -59,6 +59,44 @@ De paso: acompañantes (`agregarCompanero`/`quitarCompanero`, ya existían en
 no puede repetirse, dos nombres iguales no chocan de slug, verificar saca el
 perfil de la cola.
 
+## Hecho (edición de perfil y datos personales — 2026-08-02)
+
+Construido a partir del punto 1 de la referencia de Glitter (ver abajo).
+
+- **Migración `0001_magical_puma.sql`**: 6 columnas nulables nuevas en
+  `exhibitors` (`full_name`, `birth_date`, `contact_email`, `phone`, `gender`,
+  `department`). Sin reescritura de tabla; se aplica con `npm run db:migrate`
+  cuando haya `DATABASE_URL`. **Todavía no aplicada a ninguna base real.**
+- **`COLUMNAS_PUBLICAS`** en `lib/perfiles.ts`: la frontera entre lo que se
+  publica y lo que no. Las consultas públicas seleccionan desde ahí, nunca
+  `select()` entero, así que un dato personal nuevo no se filtra por olvido.
+  Hay una prueba que lo comprueba campo por campo.
+- **Edición**: `actualizarPerfilPublico` y `actualizarDatosPrivados`. El mismo
+  `FormularioPerfil` sirve para alta y edición (mismos campos, distinta acción).
+  El slug **no** se recalcula al renombrarse: es la URL que el artista ya
+  compartió en redes.
+- **UI**: `/mi-cuenta` pasa a tener dos tarjetas con su propio botón "Editar"
+  —Perfil público e Información personal, esta con candado y la aclaración de
+  que sólo la ve el equipo—. `/admin` muestra esos datos en cada fila de la
+  cola, y marca en rojo a quien todavía no los cargó.
+- **Género**: opcional, guardado como texto (no enum, para no migrar la base
+  cada vez que cambie la lista) e incluye "No binario" y "Prefiero no decirlo".
+- El alta sigue pidiendo sólo lo público: sumar seis campos personales al
+  formulario de registro habría subido la fricción justo en el peor momento.
+  Se cargan después, y el panel de staff avisa a quién le faltan.
+
+3 pruebas nuevas (21 en total): editar no cambia el slug, los datos personales
+no salen por la consulta pública, el staff sí los ve en su cola.
+
+### Decisión abierta que dejé sin resolver
+
+**Editar el perfil no revoca la insignia de verificado.** Alguien podría
+verificarse con un perfil correcto y luego cambiarlo entero. Resetear
+`verified` en cada edición sería hostil (perder la insignia por corregir una
+falta de ortografía), así que no lo hice, pero el hueco existe. Opciones si
+molesta: revocar sólo cuando cambie `displayName`, o marcar en `/admin` los
+perfiles verificados editados después de verificarse. Es decisión de producto.
+
 ### Pendiente de conectar (importante, no soy yo quien lo puede decidir solo)
 
 El mapa (`StandMap`), la lista de participantes y `/artistas/[slug]` **siguen
@@ -91,15 +129,12 @@ Se compartieron 3 grabaciones de pantalla de `glitter.com.bo` (otro festival
 boliviano) como referencia de diseño, sin construir nada todavía a partir de
 ellas — quedan anotadas para cuando se retomen:
 
-1. **Perfil con datos públicos y privados separados.** Su "mi cuenta" tiene
-   dos bloques: "Perfil Público" (avatar, insignia verificado, categoría,
-   bio, redes con botón agregar/quitar por red) e "Información Personal",
-   visible sólo para el staff, con nombre completo, fecha de nacimiento,
-   correo, teléfono, género y departamento de residencia. Hoy `lib/perfiles.ts`
-   sólo tiene el lado público y el perfil no se puede editar después de
-   creado — ambas cosas quedarían por sumar si se retoma esto. Requeriría
-   columnas nuevas en `exhibitors` (o una tabla aparte) para los datos
-   privados.
+1. ~~**Perfil con datos públicos y privados separados.**~~ **Hecho** el
+   2026-08-02, ver la sección de arriba. Queda pendiente de su versión sólo el
+   avatar subido por la persona (hoy `avatar_url` existe en la tabla pero nada
+   lo escribe: necesita la misma decisión de almacenamiento que el
+   comprobante) y el botón de agregar/quitar redes de a una, que aquí es un
+   campo fijo por red.
 2. **Cacería de Sellos, spec de referencia para la Fase 3.** Su versión: se
    compra un "Pasaporte" (Bs, en su stand), se junta un sello físico (propio,
    máximo 5 cm de diámetro) por cada stand visitado, tope de 50 inscritos a

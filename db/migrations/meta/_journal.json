@@ -8,6 +8,13 @@
       "when": 1785545984926,
       "tag": "0000_ambiguous_thunderbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785704634685,
+      "tag": "0001_magical_puma",
+      "breakpoints": true
     }
   ]
 }

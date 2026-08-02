@@ -2,7 +2,7 @@ import { asc, eq } from 'drizzle-orm';
 import type { YucaDb } from '@/db';
 import { exhibitors } from '@/db/schema';
 import { esViolacionUnica } from '@/lib/db-errores';
-import type { ArtCategory, ConvocatoriaAudience } from '@/lib/types';
+import type { ArtCategory, ConvocatoriaAudience, DatosPrivados } from '@/lib/types';
 
 /**
  * Perfil de expositor.
@@ -10,7 +10,33 @@ import type { ArtCategory, ConvocatoriaAudience } from '@/lib/types';
  * Lo crea la propia persona al entrar con Clerk por primera vez; a partir de
  * ahí `mi cuenta` lee este perfil para saber si ya puede elegir mesa.
  * `verified` es aparte porque sólo el staff lo otorga, nunca el expositor.
+ *
+ * El perfil tiene dos mitades con público distinto (ver el comentario de la
+ * tabla en `db/schema.ts`): lo público y los datos personales. La frontera se
+ * sostiene con `COLUMNAS_PUBLICAS`: toda consulta que alimente la web pública
+ * debe seleccionar por ahí y nunca hacer `select()` de la tabla entera.
  */
+
+/**
+ * Las únicas columnas que pueden salir a la web pública.
+ *
+ * Existe para que añadir un dato personal nuevo a la tabla no lo filtre solo:
+ * si no está en esta lista, no se publica.
+ */
+export const COLUMNAS_PUBLICAS = {
+  id: exhibitors.id,
+  slug: exhibitors.slug,
+  displayName: exhibitors.displayName,
+  audience: exhibitors.audience,
+  categories: exhibitors.categories,
+  verified: exhibitors.verified,
+  avatarUrl: exhibitors.avatarUrl,
+  bio: exhibitors.bio,
+  instagram: exhibitors.instagram,
+  tiktok: exhibitors.tiktok,
+  facebook: exhibitors.facebook,
+  web: exhibitors.web,
+} as const;
 
 function slugBase(nombre: string): string {
   return (
@@ -23,11 +49,28 @@ function slugBase(nombre: string): string {
   );
 }
 
+/**
+ * Perfil completo de quien está conectado, datos personales incluidos.
+ *
+ * Aquí sí se traen todas las columnas: es su propio perfil, va a "mi cuenta" y
+ * nadie más lo ve.
+ */
 export async function perfilPorClerkId(db: YucaDb, clerkUserId: string) {
   const [perfil] = await db
     .select()
     .from(exhibitors)
     .where(eq(exhibitors.clerkUserId, clerkUserId))
+    .limit(1);
+
+  return perfil ?? null;
+}
+
+/** Perfil para la web pública: sólo lo que puede ver cualquiera. */
+export async function perfilPublicoPorSlug(db: YucaDb, slug: string) {
+  const [perfil] = await db
+    .select(COLUMNAS_PUBLICAS)
+    .from(exhibitors)
+    .where(eq(exhibitors.slug, slug))
     .limit(1);
 
   return perfil ?? null;
@@ -90,20 +133,85 @@ export async function crearPerfil(
   throw new Error(`No se pudo generar un slug único para "${params.displayName}"`);
 }
 
-/** Perfiles a la espera de la insignia de verificado, del más viejo al más nuevo. */
+/**
+ * La persona edita su propio perfil público.
+ *
+ * El slug NO se recalcula al cambiar el nombre: es la URL pública del perfil
+ * (`/artistas/[slug]`) y los artistas la comparten en redes. Renombrarse no
+ * puede romper los enlaces que ya publicó nadie.
+ */
+export async function actualizarPerfilPublico(
+  db: YucaDb,
+  params: {
+    exhibitorId: string;
+    displayName: string;
+    audience: ConvocatoriaAudience;
+    categories: ArtCategory[];
+    bio: string;
+    instagram?: string;
+    tiktok?: string;
+    facebook?: string;
+    web?: string;
+  },
+): Promise<boolean> {
+  const filas = await db
+    .update(exhibitors)
+    .set({
+      displayName: params.displayName.trim(),
+      audience: params.audience,
+      categories: params.categories,
+      bio: params.bio.trim(),
+      instagram: params.instagram || null,
+      tiktok: params.tiktok || null,
+      facebook: params.facebook || null,
+      web: params.web || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(exhibitors.id, params.exhibitorId))
+    .returning({ id: exhibitors.id });
+
+  return filas.length > 0;
+}
+
+/** La persona edita sus datos personales; sólo los verá el equipo. */
+export async function actualizarDatosPrivados(
+  db: YucaDb,
+  params: { exhibitorId: string } & DatosPrivados,
+): Promise<boolean> {
+  const filas = await db
+    .update(exhibitors)
+    .set({
+      fullName: params.fullName || null,
+      birthDate: params.birthDate || null,
+      contactEmail: params.contactEmail || null,
+      phone: params.phone || null,
+      gender: params.gender || null,
+      department: params.department || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(exhibitors.id, params.exhibitorId))
+    .returning({ id: exhibitors.id });
+
+  return filas.length > 0;
+}
+
+/**
+ * Perfiles a la espera de la insignia de verificado, del más viejo al más nuevo.
+ *
+ * Trae los datos personales a propósito: verificar es justamente cotejar que
+ * detrás del nombre artístico hay una persona identificable. Es una consulta
+ * de staff, y `/admin` ya comprueba el rol antes de llamarla.
+ */
 export async function perfilesPorVerificar(db: YucaDb) {
   return db
     .select({
-      id: exhibitors.id,
-      slug: exhibitors.slug,
-      displayName: exhibitors.displayName,
-      audience: exhibitors.audience,
-      categories: exhibitors.categories,
-      bio: exhibitors.bio,
-      instagram: exhibitors.instagram,
-      tiktok: exhibitors.tiktok,
-      facebook: exhibitors.facebook,
-      web: exhibitors.web,
+      ...COLUMNAS_PUBLICAS,
+      fullName: exhibitors.fullName,
+      birthDate: exhibitors.birthDate,
+      contactEmail: exhibitors.contactEmail,
+      phone: exhibitors.phone,
+      gender: exhibitors.gender,
+      department: exhibitors.department,
       createdAt: exhibitors.createdAt,
     })
     .from(exhibitors)

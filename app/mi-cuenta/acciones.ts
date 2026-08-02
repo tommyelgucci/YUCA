@@ -3,7 +3,12 @@
 import { revalidatePath } from 'next/cache';
 import { requireDb } from '@/db';
 import { getUsuarioId } from '@/lib/auth';
-import { crearPerfil, perfilPorClerkId } from '@/lib/perfiles';
+import {
+  actualizarDatosPrivados,
+  actualizarPerfilPublico,
+  crearPerfil,
+  perfilPorClerkId,
+} from '@/lib/perfiles';
 import {
   agregarCompanero,
   cancelarReserva,
@@ -75,6 +80,81 @@ export async function crearPerfilAction(formData: FormData): Promise<ResultadoAc
   return resultado.ok
     ? { ok: true, mensaje: 'Perfil creado. Ya puedes elegir tu mesa.' }
     : { ok: false, mensaje: 'Ya tienes un perfil de expositor con esta cuenta.' };
+}
+
+export async function actualizarPerfilAction(formData: FormData): Promise<ResultadoAccion> {
+  const clerkUserId = await exigirSesion();
+  const db = requireDb();
+
+  const perfil = await perfilPorClerkId(db, clerkUserId);
+  if (!perfil) return { ok: false, mensaje: 'No tienes perfil de expositor.' };
+
+  const displayName = String(formData.get('displayName') ?? '').trim();
+  const audience = String(formData.get('audience') ?? '') as ConvocatoriaAudience;
+  const bio = String(formData.get('bio') ?? '').trim();
+  const categories = formData.getAll('categories').map(String) as ArtCategory[];
+
+  if (!displayName) return { ok: false, mensaje: 'Escribe tu nombre o el de tu marca.' };
+  if (!['artistas', 'comidas', 'emprendimientos'].includes(audience)) {
+    return { ok: false, mensaje: 'Elige a qué público perteneces.' };
+  }
+
+  const hecho = await actualizarPerfilPublico(db, {
+    exhibitorId: perfil.id,
+    displayName,
+    audience,
+    categories: audience === 'artistas' ? categories : [],
+    bio,
+    instagram: String(formData.get('instagram') ?? '').trim(),
+    tiktok: String(formData.get('tiktok') ?? '').trim(),
+    facebook: String(formData.get('facebook') ?? '').trim(),
+    web: String(formData.get('web') ?? '').trim(),
+  });
+
+  revalidatePath('/mi-cuenta');
+  revalidatePath(`/artistas/${perfil.slug}`);
+
+  return hecho
+    ? { ok: true, mensaje: 'Perfil actualizado.' }
+    : { ok: false, mensaje: 'No se pudo actualizar tu perfil.' };
+}
+
+/**
+ * Guarda los datos personales.
+ *
+ * No valida el formato de nada salvo la fecha: son datos que el equipo lee a
+ * ojo para identificar a la persona, no llaves de las que dependa el sistema,
+ * y rechazar un teléfono por su formato sólo estorbaría.
+ */
+export async function actualizarDatosPrivadosAction(
+  formData: FormData,
+): Promise<ResultadoAccion> {
+  const clerkUserId = await exigirSesion();
+  const db = requireDb();
+
+  const perfil = await perfilPorClerkId(db, clerkUserId);
+  if (!perfil) return { ok: false, mensaje: 'No tienes perfil de expositor.' };
+
+  const birthDate = String(formData.get('birthDate') ?? '').trim();
+  if (birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+    return { ok: false, mensaje: 'La fecha de nacimiento no es válida.' };
+  }
+
+  const hecho = await actualizarDatosPrivados(db, {
+    exhibitorId: perfil.id,
+    fullName: String(formData.get('fullName') ?? '').trim(),
+    birthDate,
+    contactEmail: String(formData.get('contactEmail') ?? '').trim(),
+    phone: String(formData.get('phone') ?? '').trim(),
+    gender: String(formData.get('gender') ?? '').trim(),
+    department: String(formData.get('department') ?? '').trim(),
+  });
+
+  revalidatePath('/mi-cuenta');
+
+  return hecho
+    ? { ok: true, mensaje: 'Datos guardados. Sólo los ve el equipo.' }
+    : { ok: false, mensaje: 'No se pudieron guardar tus datos.' };
 }
 
 /* -------------------------------------------------------------------------- */
