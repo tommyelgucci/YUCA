@@ -45,6 +45,7 @@ export const paymentMethod = pgEnum('payment_method', ['qr']);
 export const convocatoriaAudience = pgEnum('convocatoria_audience', [
   'artistas',
   'comidas',
+  'tiendas',
   'emprendimientos',
 ]);
 
@@ -102,6 +103,18 @@ export const exhibitors = pgTable(
     gender: text('gender'),
     /** Departamento de Bolivia donde vive. */
     department: text('department'),
+
+    /*
+     * Permiso del tutor, obligatorio a los 17 y 18 años (ver `lib/edad.ts`).
+     *
+     * Lo que se guarda es la declaración hecha en la web, no el documento
+     * firmado: el papel lo pide el equipo aparte, y por eso `/admin` muestra
+     * estos datos junto al perfil en vez de darlo por bueno sin más.
+     */
+    guardianName: text('guardian_name'),
+    guardianContact: text('guardian_contact'),
+    /** Cuándo se declaró el permiso. `null` = no lo hay. */
+    guardianConsentAt: timestamp('guardian_consent_at', { withTimezone: true }),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

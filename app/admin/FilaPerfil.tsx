@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { BadgeCheck } from 'lucide-react';
+import { BadgeCheck, ShieldAlert } from 'lucide-react';
+import { AUDIENCIA_LABEL, type ConvocatoriaAudience } from '@/lib/types';
+import { situacionEdad } from '@/lib/edad';
 import { verificarPerfilAction } from './acciones';
 
 export interface PerfilPorVerificar {
   id: string;
   slug: string;
   displayName: string;
-  audience: string;
+  audience: ConvocatoriaAudience;
   bio: string;
   instagram: string | null;
   tiktok: string | null;
@@ -20,14 +22,11 @@ export interface PerfilPorVerificar {
   phone: string | null;
   gender: string | null;
   department: string | null;
+  guardianName: string | null;
+  guardianContact: string | null;
+  guardianConsentAt: Date | null;
   createdAt: Date;
 }
-
-const AUDIENCIA_LABEL: Record<string, string> = {
-  artistas: 'Arte e ilustración',
-  comidas: 'Comida',
-  emprendimientos: 'Emprendimiento',
-};
 
 /** Una fila de la cola de perfiles por verificar. */
 export default function FilaPerfil({ perfil }: { perfil: PerfilPorVerificar }) {
@@ -66,6 +65,26 @@ export default function FilaPerfil({ perfil }: { perfil: PerfilPorVerificar }) {
           {perfil.bio && <p className="mt-1.5 text-sm text-yuca-ink-soft">{perfil.bio}</p>}
           {redes.length > 0 && (
             <p className="mt-1 truncate text-xs text-yuca-ink-soft">{redes.join(' · ')}</p>
+          )}
+
+          {/* Si es menor de 19, el papel firmado del tutor se pide aparte:
+              la web sólo registra que lo declaró. */}
+          {situacionEdad(perfil.birthDate) === 'requiere-permiso' && (
+            <p className="mt-2.5 flex items-start gap-1.5 rounded-xl bg-yuca-mustard/15 px-3 py-2 text-xs text-yuca-ink">
+              <ShieldAlert size={14} className="mt-px shrink-0 text-yuca-mustard" aria-hidden="true" />
+              {perfil.guardianConsentAt ? (
+                <span>
+                  Menor de 19: declaró permiso de{' '}
+                  <strong>{perfil.guardianName}</strong> ({perfil.guardianContact}). Pídele el
+                  papel firmado antes de verificar.
+                </span>
+              ) : (
+                <span>
+                  Menor de 19 y <strong>sin permiso de tutor declarado</strong>. No puede apartar
+                  mesa hasta cargarlo.
+                </span>
+              )}
+            </p>
           )}
 
           {personales.length > 0 ? (

@@ -11,9 +11,9 @@ separación público/personal. Fusionado `main` (PR #3: exportación de
 credenciales y Clerk realineado), que había avanzado en paralelo. `npm test` en
 verde: 30 pruebas (14 reservas + 7 perfiles + 9 credenciales).
 
-⚠️ **Lo más importante de esta actualización está abajo**, en "Requisitos del
-audio de la organización": hay tres cosas que el pliego pide y que no existen
-(control de edad, el tipo de perfil Tienda y el QR de pago).
+Después se cerraron dos de los tres huecos del pliego: **control de edad** y el
+público **tiendas**. Queda abierto el **QR de pago**, que necesita saber si el
+QR es uno fijo de la organización o uno por reserva. 42 pruebas en verde.
 
 ## Hecho
 
@@ -148,6 +148,51 @@ ellas — quedan anotadas para cuando se retomen:
    Nuestro modelo ya soporta varios expositores por mesa vía acompañantes,
    pero `StandDetail.tsx` hoy sólo muestra al titular, no a la lista completa.
 
+## Hecho (control de edad y público "tiendas" — 2026-08-02)
+
+Los dos primeros huecos del pliego que se podían cerrar sin pedir nada.
+
+**Control de edad** (`lib/edad.ts`, migración `0002`)
+- Tres tramos: menos de 17 no puede; 17 y 18 con permiso del tutor; más de 18
+  libre. La regla vive en un módulo puro, sin base de datos, para poder
+  probarla con fechas de borde.
+- Se impone **en `reservarMesaAction`**, no en la interfaz: es el punto donde
+  alguien pasa a ocupar una mesa, y una Server Action es un endpoint público.
+  Sin fecha de nacimiento cargada tampoco se puede apartar mesa.
+- Columnas nuevas: `guardian_name`, `guardian_contact`, `guardian_consent_at`.
+  El timestamp del permiso **no llega del formulario**: lo pone `lib/perfiles.ts`
+  sólo si vienen nombre y contacto del tutor con la casilla marcada, y lo borra
+  si se retiran. Así la marca no puede existir sin lo que la respalda.
+- La web guarda la **declaración**, no el papel firmado. `/admin` avisa en la
+  ficha de cada menor de 19, con tutor y contacto a la vista, para que el
+  equipo pida el documento antes de verificar.
+- Al menor de 17 se le **guardan** los datos igual y se le explica; negarse a
+  registrar la fecha dejaría a la organización sin saber que esa persona no
+  puede tener mesa.
+- 10 pruebas: los tres tramos en su borde exacto, el día antes de cumplir 17,
+  el 29 de febrero en año no bisiesto, fechas imposibles y futuras.
+
+**Público "tiendas"**
+- Entró al enum `convocatoria_audience`. La migración usa
+  `ALTER TYPE ... ADD VALUE`, y una prueba da de alta un perfil de ese público
+  contra PGlite: si no corriera dentro de la transacción del migrador, fallaría
+  ahí.
+- De paso, los cuatro públicos se declaran una sola vez (`AUDIENCIAS` en
+  `lib/types.ts`). Estaban repetidos en cinco archivos y sumar el cuarto
+  obligaba a acertar en todos; ahora `Convocatorias.tsx` usa un `Record`
+  exhaustivo, así que TypeScript avisa si algún día entra un quinto.
+
+42 pruebas en verde (10 edad + 14 reservas + 9 perfiles + 9 credenciales).
+
+### Pendiente de decidir
+
+- **Datos personales de menores de 17.** Hoy se guardan igual (nombre,
+  teléfono, correo) aunque esa persona no pueda participar. Guardar menos
+  datos de menores sería lo prudente, pero borrarlos deja al equipo sin saber
+  por qué alguien no puede reservar. No es decisión técnica.
+- Las migraciones `0001` y `0002` **no están aplicadas a ninguna base real**
+  todavía: hace falta `DATABASE_URL` y `npm run db:migrate`.
+
 ## Requisitos del audio de la organización (2026-07-31)
 
 Transcritos y pasados a texto por quien lleva el proyecto. Es la primera vez
@@ -158,15 +203,9 @@ yo hubiera supuesto. Marcado contra lo que ya existe:
 - Nombre artístico ✅, nombre real ✅ (`full_name`), edad ✅ (`birth_date`).
   "Constancia" aparece en el audio y no quedó claro a qué se refiere —
   conviene confirmarlo antes de modelarlo.
-- ❌ **Control de edad, sin implementar y es regla dura**: menores de 17 no
-  entran; 17 y 18 requieren permiso de padre/madre o tutor legal; mayores de
-  18, libres. Hoy `birth_date` se guarda pero nadie la valida, y no hay dónde
-  registrar ese permiso. Necesita columna(s) nuevas y validación en el alta.
-- ⚠️ **Los cuatro tipos de perfil no cuadran con el enum actual.** El audio
-  pide Artista, Emprendimiento, Tienda y Gastronomía; `convocatoria_audience`
-  sólo tiene `artistas`, `comidas` y `emprendimientos`. Falta **Tienda**, que
-  sí existe como tipo de mesa (`stand_kind.tienda`) desde el PR #2. Arreglarlo
-  es una migración de enum.
+- ✅ **Control de edad** — hecho el 2026-08-02, ver sección propia abajo.
+- ✅ **Los cuatro tipos de perfil** — hecho: `tiendas` entró al enum
+  `convocatoria_audience` (migración `0002`).
 - ❌ Sección de colaboradores / patrocinadores destacados. No existe nada.
 
 **Inscripción a la feria**

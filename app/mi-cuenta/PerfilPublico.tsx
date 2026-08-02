@@ -2,14 +2,9 @@
 
 import { useState } from 'react';
 import { Eye, Pencil } from 'lucide-react';
+import { AUDIENCIA_LABEL } from '@/lib/types';
 import { Avatar, VerifiedBadge } from '@/components/ui/Badges';
 import FormularioPerfil, { type ValoresPerfil } from './FormularioPerfil';
-
-const AUDIENCIA_LABEL: Record<string, string> = {
-  artistas: 'Arte e ilustración',
-  comidas: 'Comida',
-  emprendimientos: 'Emprendimiento',
-};
 
 /**
  * Lo que ve cualquiera que entre al perfil.

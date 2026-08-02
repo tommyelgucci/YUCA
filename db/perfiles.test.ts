@@ -143,6 +143,9 @@ test('los datos personales se guardan y no salen en la consulta pública', async
     phone: '59169006784',
     gender: 'Femenino',
     department: 'Santa Cruz',
+    guardianName: null,
+    guardianContact: null,
+    declaraPermiso: false,
   });
 
   // Ella los ve completos en su propia cuenta…
@@ -179,12 +182,85 @@ test('el staff sí ve los datos personales de la cola por verificar', async () =
     phone: '59169006784',
     gender: null,
     department: 'Santa Cruz',
+    guardianName: null,
+    guardianContact: null,
+    declaraPermiso: false,
   });
 
   const [enCola] = await perfilesPorVerificar(db);
   assert.equal(enCola.fullName, 'Ana Quiroga');
   assert.equal(enCola.phone, '59169006784');
   assert.equal(enCola.department, 'Santa Cruz');
+});
+
+test('se puede dar de alta un perfil del público tiendas', async () => {
+  const { db } = await baseDePrueba();
+
+  // Vale por la migración del enum tanto como por el alta: si
+  // `ALTER TYPE ... ADD VALUE` no hubiera corrido, esto reventaría aquí.
+  const resultado = await crearPerfil(db, {
+    clerkUserId: 'user_tienda',
+    displayName: 'Quirquincho Store',
+    audience: 'tiendas',
+    categories: [],
+    bio: '',
+  });
+
+  assert.equal(resultado.ok, true);
+  const perfil = await perfilPorClerkId(db, 'user_tienda');
+  assert.equal(perfil?.audience, 'tiendas');
+});
+
+test('el permiso del tutor sólo queda registrado si vienen sus datos', async () => {
+  const { db } = await baseDePrueba();
+
+  await crearPerfil(db, {
+    clerkUserId: 'user_teen',
+    displayName: 'Wawita',
+    audience: 'artistas',
+    categories: [],
+    bio: '',
+  });
+  const perfil = await perfilPorClerkId(db, 'user_teen');
+
+  const datosBase = {
+    exhibitorId: perfil!.id,
+    fullName: 'Ana Menor',
+    birthDate: '2009-11-15',
+    contactEmail: null,
+    phone: null,
+    gender: null,
+    department: null,
+  };
+
+  // Marcar la casilla sin cargar al tutor no vale como permiso.
+  await actualizarDatosPrivados(db, {
+    ...datosBase,
+    guardianName: null,
+    guardianContact: null,
+    declaraPermiso: true,
+  });
+  assert.equal((await perfilPorClerkId(db, 'user_teen'))?.guardianConsentAt, null);
+
+  // Con tutor y casilla marcada, sí.
+  await actualizarDatosPrivados(db, {
+    ...datosBase,
+    guardianName: 'Rosa Quiroga',
+    guardianContact: '59170000000',
+    declaraPermiso: true,
+  });
+  const conPermiso = await perfilPorClerkId(db, 'user_teen');
+  assert.ok(conPermiso?.guardianConsentAt instanceof Date);
+  assert.equal(conPermiso?.guardianName, 'Rosa Quiroga');
+
+  // Y retirar los datos del tutor retira el permiso.
+  await actualizarDatosPrivados(db, {
+    ...datosBase,
+    guardianName: null,
+    guardianContact: null,
+    declaraPermiso: false,
+  });
+  assert.equal((await perfilPorClerkId(db, 'user_teen'))?.guardianConsentAt, null);
 });
 
 test('el staff verifica un perfil y deja de aparecer en la cola', async () => {

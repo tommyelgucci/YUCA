@@ -173,11 +173,22 @@ export async function actualizarPerfilPublico(
   return filas.length > 0;
 }
 
-/** La persona edita sus datos personales; sólo los verá el equipo. */
+/**
+ * La persona edita sus datos personales; sólo los verá el equipo.
+ *
+ * `guardianConsentAt` no lo manda el formulario: lo pone esta función cuando
+ * hay declaración válida (tutor con nombre y contacto), y lo borra si se
+ * retiran esos datos. Así la marca de "tiene permiso" no puede llegar suelta
+ * desde el cliente sin los datos que la respaldan.
+ */
 export async function actualizarDatosPrivados(
   db: YucaDb,
-  params: { exhibitorId: string } & DatosPrivados,
+  params: { exhibitorId: string; declaraPermiso: boolean } & DatosPrivados,
 ): Promise<boolean> {
+  const guardianName = params.guardianName || null;
+  const guardianContact = params.guardianContact || null;
+  const hayPermiso = Boolean(params.declaraPermiso && guardianName && guardianContact);
+
   const filas = await db
     .update(exhibitors)
     .set({
@@ -187,6 +198,9 @@ export async function actualizarDatosPrivados(
       phone: params.phone || null,
       gender: params.gender || null,
       department: params.department || null,
+      guardianName,
+      guardianContact,
+      guardianConsentAt: hayPermiso ? new Date() : null,
       updatedAt: new Date(),
     })
     .where(eq(exhibitors.id, params.exhibitorId))
@@ -212,6 +226,9 @@ export async function perfilesPorVerificar(db: YucaDb) {
       phone: exhibitors.phone,
       gender: exhibitors.gender,
       department: exhibitors.department,
+      guardianName: exhibitors.guardianName,
+      guardianContact: exhibitors.guardianContact,
+      guardianConsentAt: exhibitors.guardianConsentAt,
       createdAt: exhibitors.createdAt,
     })
     .from(exhibitors)

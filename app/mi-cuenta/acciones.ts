@@ -20,7 +20,8 @@ import {
 } from '@/lib/reservas';
 import { edicionActual } from '@/lib/data/edicion';
 import { precioActual, preventaVigente } from '@/lib/data/preventas';
-import type { ArtCategory, ConvocatoriaAudience } from '@/lib/types';
+import { esAudiencia, type ArtCategory } from '@/lib/types';
+import { puedeSerExpositor, situacionEdad } from '@/lib/edad';
 
 /**
  * Acciones de "mi cuenta".
@@ -50,7 +51,7 @@ export async function crearPerfilAction(formData: FormData): Promise<ResultadoAc
   const db = requireDb();
 
   const displayName = String(formData.get('displayName') ?? '').trim();
-  const audience = String(formData.get('audience') ?? '') as ConvocatoriaAudience;
+  const audience = formData.get('audience');
   const bio = String(formData.get('bio') ?? '').trim();
   const categories = formData.getAll('categories').map(String) as ArtCategory[];
   const instagram = String(formData.get('instagram') ?? '').trim();
@@ -59,7 +60,7 @@ export async function crearPerfilAction(formData: FormData): Promise<ResultadoAc
   const web = String(formData.get('web') ?? '').trim();
 
   if (!displayName) return { ok: false, mensaje: 'Escribe tu nombre o el de tu marca.' };
-  if (!['artistas', 'comidas', 'emprendimientos'].includes(audience)) {
+  if (!esAudiencia(audience)) {
     return { ok: false, mensaje: 'Elige a qué público perteneces.' };
   }
 
@@ -90,12 +91,12 @@ export async function actualizarPerfilAction(formData: FormData): Promise<Result
   if (!perfil) return { ok: false, mensaje: 'No tienes perfil de expositor.' };
 
   const displayName = String(formData.get('displayName') ?? '').trim();
-  const audience = String(formData.get('audience') ?? '') as ConvocatoriaAudience;
+  const audience = formData.get('audience');
   const bio = String(formData.get('bio') ?? '').trim();
   const categories = formData.getAll('categories').map(String) as ArtCategory[];
 
   if (!displayName) return { ok: false, mensaje: 'Escribe tu nombre o el de tu marca.' };
-  if (!['artistas', 'comidas', 'emprendimientos'].includes(audience)) {
+  if (!esAudiencia(audience)) {
     return { ok: false, mensaje: 'Elige a qué público perteneces.' };
   }
 
@@ -136,7 +137,7 @@ export async function actualizarDatosPrivadosAction(
   if (!perfil) return { ok: false, mensaje: 'No tienes perfil de expositor.' };
 
   const birthDate = String(formData.get('birthDate') ?? '').trim();
-  if (birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+  if (birthDate && situacionEdad(birthDate) === 'sin-fecha') {
     return { ok: false, mensaje: 'La fecha de nacimiento no es válida.' };
   }
 
@@ -148,14 +149,41 @@ export async function actualizarDatosPrivadosAction(
     phone: String(formData.get('phone') ?? '').trim(),
     gender: String(formData.get('gender') ?? '').trim(),
     department: String(formData.get('department') ?? '').trim(),
+    guardianName: String(formData.get('guardianName') ?? '').trim(),
+    guardianContact: String(formData.get('guardianContact') ?? '').trim(),
+    declaraPermiso: formData.get('declaraPermiso') === 'on',
   });
 
   revalidatePath('/mi-cuenta');
 
-  return hecho
-    ? { ok: true, mensaje: 'Datos guardados. Sólo los ve el equipo.' }
-    : { ok: false, mensaje: 'No se pudieron guardar tus datos.' };
+  if (!hecho) return { ok: false, mensaje: 'No se pudieron guardar tus datos.' };
+
+  // Se guarda igual y se avisa después: negarse a registrar la fecha dejaría a
+  // la organización sin saber que esa persona no puede tener mesa.
+  const situacion = situacionEdad(birthDate);
+  if (situacion === 'menor') {
+    return {
+      ok: true,
+      mensaje: 'Datos guardados, pero para tener mesa hay que tener 17 años cumplidos.',
+    };
+  }
+  if (situacion === 'requiere-permiso') {
+    return {
+      ok: true,
+      mensaje: 'Datos guardados. Al ser menor de 19 necesitas el permiso de tu tutor para apartar mesa.',
+    };
+  }
+
+  return { ok: true, mensaje: 'Datos guardados. Sólo los ve el equipo.' };
 }
+
+/** Traducción de por qué la edad impide apartar mesa. */
+const MOTIVO_EDAD: Record<string, string> = {
+  'sin-fecha': 'Antes de apartar mesa carga tu fecha de nacimiento en información personal.',
+  menor: 'Para tener mesa hay que tener 17 años cumplidos.',
+  'sin-permiso':
+    'Al tener 17 o 18 necesitas el permiso de tu tutor: cárgalo en información personal.',
+};
 
 /* -------------------------------------------------------------------------- */
 /* Mesa y pago                                                                 */
@@ -167,6 +195,12 @@ export async function reservarMesaAction(standCode: string): Promise<ResultadoAc
 
   const perfil = await perfilPorClerkId(db, clerkUserId);
   if (!perfil) return { ok: false, mensaje: 'Primero completa tu perfil de expositor.' };
+
+  // El control de edad se impone aquí, que es donde alguien pasa a ocupar una
+  // mesa de verdad. Esconder el selector en la interfaz no basta: esta acción
+  // es un endpoint público al que se puede llamar directo.
+  const edad = puedeSerExpositor(perfil);
+  if (!edad.ok) return { ok: false, mensaje: MOTIVO_EDAD[edad.motivo] };
 
   const kind = await kindDeStand(db, { editionId: edicionActual.id, standCode });
   if (!kind) return { ok: false, mensaje: 'Esa mesa ya no existe.' };

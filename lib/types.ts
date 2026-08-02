@@ -78,6 +78,9 @@ export interface DatosPrivados {
   phone: string | null;
   gender: string | null;
   department: string | null;
+  /** Tutor legal; sólo hace falta a los 17 y 18 años (ver `lib/edad.ts`). */
+  guardianName: string | null;
+  guardianContact: string | null;
 }
 
 export interface Exhibitor {
@@ -235,13 +238,40 @@ export interface Reservation {
 /* -------------------------------------------------------------------------- */
 
 /**
- * A quién va dirigida cada convocatoria.
+ * A quién va dirigida cada convocatoria, y de qué se da de alta cada expositor.
  *
- * Ojo: no todos los que ocupan una mesa son artistas. Comidas y emprendimientos
- * también pagan y ocupan stand, así que no deben modelarse como `externo`
- * (ese estado es sólo para espacios de la organización).
+ * Ojo: no todos los que ocupan una mesa son artistas. Comidas, tiendas y
+ * emprendimientos también pagan y ocupan stand, así que no deben modelarse como
+ * `externo` (ese estado es sólo para espacios de la organización).
+ *
+ * `tiendas` se sumó cuando llegó el pliego de la organización, que pide cuatro
+ * públicos. Ya existía como tipo de mesa (`StandKind`) desde que se trazaron
+ * los planos reales, pero no como público al que uno pueda pertenecer.
  */
-export type ConvocatoriaAudience = 'artistas' | 'comidas' | 'emprendimientos';
+export type ConvocatoriaAudience = 'artistas' | 'comidas' | 'tiendas' | 'emprendimientos';
+
+/**
+ * Los cuatro públicos con su rótulo, en un solo sitio.
+ *
+ * Estaba repetido en cinco archivos —dos mapas de rótulos, dos listas de
+ * validación y el selector del formulario— y sumar el cuarto obligaba a
+ * acertar en todos. Ahora se declara una vez.
+ */
+export const AUDIENCIAS: { id: ConvocatoriaAudience; label: string }[] = [
+  { id: 'artistas', label: 'Arte e ilustración' },
+  { id: 'emprendimientos', label: 'Emprendimiento' },
+  { id: 'tiendas', label: 'Tienda' },
+  { id: 'comidas', label: 'Comida' },
+];
+
+export const AUDIENCIA_LABEL: Record<ConvocatoriaAudience, string> = Object.fromEntries(
+  AUDIENCIAS.map((audiencia) => [audiencia.id, audiencia.label]),
+) as Record<ConvocatoriaAudience, string>;
+
+/** Guarda para lo que llega de un formulario, que puede traer cualquier cosa. */
+export function esAudiencia(valor: unknown): valor is ConvocatoriaAudience {
+  return AUDIENCIAS.some((audiencia) => audiencia.id === valor);
+}
 
 /**
  * Las convocatorias van por fases. Entre una fase y la siguiente hay un hueco

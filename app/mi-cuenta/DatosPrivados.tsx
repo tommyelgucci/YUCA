@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Lock, Pencil } from 'lucide-react';
+import { Lock, Pencil, ShieldAlert } from 'lucide-react';
 import { DEPARTAMENTOS, GENEROS, type DatosPrivados as Datos } from '@/lib/types';
+import { situacionEdad } from '@/lib/edad';
 import { actualizarDatosPrivadosAction } from './acciones';
 
 /** Fecha larga a partir de un `date` de Postgres (`2001-03-29`), sin zona horaria. */
@@ -22,10 +23,21 @@ function fechaLegible(iso: string): string {
  * publica y qué no: son los datos con los que el staff identifica a quien pagó
  * una mesa, y no salen nunca a la web.
  */
-export default function DatosPrivados({ datos }: { datos: Datos }) {
+export default function DatosPrivados({
+  datos,
+  tienePermiso,
+}: {
+  datos: Datos;
+  tienePermiso: boolean;
+}) {
   const [editando, setEditando] = useState(false);
   const [pendiente, startTransition] = useTransition();
   const [mensaje, setMensaje] = useState<string | null>(null);
+  // Se recalcula mientras escribe la fecha, para que los campos del tutor
+  // aparezcan en el momento en que hacen falta y no después de guardar.
+  const [nacimiento, setNacimiento] = useState(datos.birthDate ?? '');
+
+  const situacion = situacionEdad(nacimiento);
 
   const enviar = (formData: FormData) => {
     startTransition(async () => {
@@ -42,6 +54,8 @@ export default function DatosPrivados({ datos }: { datos: Datos }) {
     { label: 'Teléfono', valor: datos.phone },
     { label: 'Género', valor: datos.gender },
     { label: 'Departamento', valor: datos.department },
+    { label: 'Tutor', valor: datos.guardianName },
+    { label: 'Contacto del tutor', valor: datos.guardianContact },
   ];
 
   const vacio = campos.every((campo) => !campo.valor);
@@ -93,7 +107,8 @@ export default function DatosPrivados({ datos }: { datos: Datos }) {
                 id="birthDate"
                 name="birthDate"
                 type="date"
-                defaultValue={datos.birthDate ?? ''}
+                value={nacimiento}
+                onChange={(event) => setNacimiento(event.target.value)}
                 className="field"
               />
             </div>
@@ -156,6 +171,61 @@ export default function DatosPrivados({ datos }: { datos: Datos }) {
               ))}
             </select>
           </div>
+
+          {situacion === 'menor' && (
+            <p className="flex items-start gap-2 rounded-2xl bg-yuca-coral/10 p-3 text-sm text-yuca-ink">
+              <ShieldAlert size={17} className="mt-0.5 shrink-0 text-yuca-coral-deep" aria-hidden="true" />
+              Para tener mesa en la feria hay que tener 17 años cumplidos. Puedes dejar tus datos
+              guardados, pero todavía no vas a poder apartar una.
+            </p>
+          )}
+
+          {situacion === 'requiere-permiso' && (
+            <fieldset className="rounded-2xl border border-yuca-mustard/40 bg-yuca-mustard/5 p-4">
+              <legend className="px-1 text-sm font-extrabold text-yuca-ink">
+                Permiso del tutor
+              </legend>
+              <p className="mb-3 text-sm text-yuca-ink-soft">
+                Al tener 17 o 18 años necesitas el permiso de tu padre, madre o tutor legal. El
+                equipo te va a pedir el papel firmado aparte.
+              </p>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="guardianName" className="label">
+                    Nombre del tutor
+                  </label>
+                  <input
+                    id="guardianName"
+                    name="guardianName"
+                    defaultValue={datos.guardianName ?? ''}
+                    className="field"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="guardianContact" className="label">
+                    Su teléfono o correo
+                  </label>
+                  <input
+                    id="guardianContact"
+                    name="guardianContact"
+                    defaultValue={datos.guardianContact ?? ''}
+                    className="field"
+                  />
+                </div>
+              </div>
+
+              <label className="mt-3 flex items-start gap-2 text-sm text-yuca-ink">
+                <input
+                  type="checkbox"
+                  name="declaraPermiso"
+                  defaultChecked={tienePermiso}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-yuca-green"
+                />
+                Declaro que cuento con el permiso de mi tutor para participar como expositor.
+              </label>
+            </fieldset>
+          )}
 
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="submit" disabled={pendiente} className="btn-primary btn-lg flex-1">

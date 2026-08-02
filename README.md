@@ -13,7 +13,7 @@ npm install
 npm run dev     # http://localhost:3000
 npm run build   # build de producción
 npm start       # sirve el build
-npm test        # pruebas de reservas contra Postgres real (PGlite)
+npm test        # edad, reservas, perfiles y credenciales (Postgres real con PGlite)
 ```
 
 Arranca sin configurar nada: sin `DATABASE_URL` usa los datos de `lib/data/` y
@@ -67,6 +67,7 @@ lib/
 ├── types.ts                👈 modelo de dominio (contrato UI ↔ datos)
 ├── reservas.ts             Reservar, confirmar, cancelar, expirar
 ├── perfiles.ts             Perfil de expositor: alta, edición y verificación de staff
+├── edad.ts                 Control de edad: mínima y permiso del tutor
 ├── db-errores.ts           Traduce violaciones de índice único de Postgres
 ├── auth.ts                 Roles de Clerk (authEnabled, esStaff)
 ├── site.js                 Contenido de la portada
@@ -226,6 +227,34 @@ Una prueba lo comprueba.
 **El slug no cambia al renombrarse.** La dirección `/artistas/[slug]` es lo que
 el artista comparte en redes, así que cambiar de nombre artístico no puede
 romper enlaces que ya publicó. El slug se fija al crear el perfil.
+
+### Control de edad
+
+Regla de la organización, en `lib/edad.ts`:
+
+| Edad cumplida | Puede tener mesa                        |
+| ------------- | --------------------------------------- |
+| menos de 17   | no                                      |
+| 17 y 18       | sí, con permiso de su tutor declarado   |
+| más de 18     | sí, sin condiciones                     |
+
+Se impone **en `reservarMesaAction`**, que es donde alguien pasa a ocupar una
+mesa de verdad; esconder el selector en la interfaz no bastaría, porque una
+Server Action es un endpoint público al que se puede llamar directo. Sin fecha
+de nacimiento cargada tampoco se puede apartar: no hay con qué decidir.
+
+`guardianConsentAt` no llega nunca desde el formulario. Lo pone `lib/perfiles.ts`
+sólo si vienen el nombre y el contacto del tutor junto a la casilla marcada, y
+lo borra si esos datos se retiran, de modo que la marca de "tiene permiso" no
+pueda existir sin los datos que la respaldan.
+
+La web registra la **declaración**, no el documento firmado: el papel lo pide
+el equipo aparte, y por eso `/admin` avisa en la ficha de cada menor de 19 —con
+el tutor y su contacto a la vista— en vez de darlo por bueno.
+
+El cálculo compara mes y día, no sólo el año, y hay pruebas de los bordes:
+cumpleaños de hoy, el día antes de cumplir 17, y el 29 de febrero en años no
+bisiestos.
 
 La captura del comprobante se guarda como `data:` URL en la propia fila de
 `reservations` (columna `proof_url`, ya existía en el esquema) en vez de contra
