@@ -1,14 +1,13 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { ART_CATEGORIES, type ArtCategory, type ConvocatoriaAudience } from '@/lib/types';
+import {
+  ART_CATEGORIES,
+  AUDIENCIAS,
+  type ArtCategory,
+  type ConvocatoriaAudience,
+} from '@/lib/types';
 import { actualizarPerfilAction, crearPerfilAction } from './acciones';
-
-const AUDIENCIAS: { id: ConvocatoriaAudience; label: string }[] = [
-  { id: 'artistas', label: 'Arte e ilustración' },
-  { id: 'comidas', label: 'Comida' },
-  { id: 'emprendimientos', label: 'Emprendimiento' },
-];
 
 export interface ValoresPerfil {
   displayName: string;

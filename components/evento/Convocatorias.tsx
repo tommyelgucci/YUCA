@@ -1,10 +1,11 @@
-import { ArrowUpRight, Lock, PenTool, Store, UtensilsCrossed } from 'lucide-react';
+import { ArrowUpRight, Lock, PenTool, ShoppingBag, Store, UtensilsCrossed } from 'lucide-react';
 import { convocatorias, hayConvocatoriaAbierta, proximaFase } from '@/lib/data/convocatorias';
 import type { ConvocatoriaAudience } from '@/lib/types';
 
 const ICONO: Record<ConvocatoriaAudience, typeof PenTool> = {
   artistas: PenTool,
   comidas: UtensilsCrossed,
+  tiendas: ShoppingBag,
   emprendimientos: Store,
 };
 

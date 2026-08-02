@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ShieldAlert } from 'lucide-react';
 import { getDb } from '@/db';
 import { authEnabled, getNombreUsuario, getUsuarioId } from '@/lib/auth';
 import { perfilPorClerkId } from '@/lib/perfiles';
+import { puedeSerExpositor } from '@/lib/edad';
 import { companerosDe, reservaActivaDe, standsDisponibles } from '@/lib/reservas';
 import { edicionActual } from '@/lib/data/edicion';
 import FormularioPerfil from './FormularioPerfil';
@@ -104,27 +105,71 @@ export default async function MiCuentaPage() {
               phone: perfil.phone,
               gender: perfil.gender,
               department: perfil.department,
+              guardianName: perfil.guardianName,
+              guardianContact: perfil.guardianContact,
             }}
+            tienePermiso={Boolean(perfil.guardianConsentAt)}
           />
 
-          <PanelDeExpositor perfilId={perfil.id} slug={perfil.slug} db={db} />
+          <PanelDeExpositor
+            perfilId={perfil.id}
+            slug={perfil.slug}
+            db={db}
+            edad={puedeSerExpositor(perfil)}
+          />
         </div>
       )}
     </div>
   );
 }
 
+/** Por qué la edad impide apartar mesa, en palabras para quien lo lee. */
+const AVISO_EDAD: Record<string, { titulo: string; detalle: string }> = {
+  'sin-fecha': {
+    titulo: 'Falta tu fecha de nacimiento',
+    detalle:
+      'Cárgala arriba, en información personal. Sin ella no podemos saber si cumples la edad mínima para tener mesa.',
+  },
+  menor: {
+    titulo: 'Todavía no puedes tener mesa',
+    detalle:
+      'Para ser expositor hay que tener 17 años cumplidos. Tu perfil queda guardado para cuando los cumplas.',
+  },
+  'sin-permiso': {
+    titulo: 'Falta el permiso de tu tutor',
+    detalle:
+      'Al tener 17 o 18 años necesitas el permiso de tu padre, madre o tutor legal. Cárgalo arriba, en información personal.',
+  },
+};
+
 /** Separado del componente de página para poder usar `await` con datos que dependen del perfil. */
 async function PanelDeExpositor({
   perfilId,
   slug,
   db,
+  edad,
 }: {
   perfilId: string;
   slug: string;
   db: NonNullable<ReturnType<typeof getDb>>;
+  edad: ReturnType<typeof puedeSerExpositor>;
 }) {
   const reserva = await reservaActivaDe(db, perfilId);
+
+  // Quien ya tiene mesa sigue viendo su panel: la edad frena apartar una nueva,
+  // no gestionar la que ya está pagada.
+  if (!reserva && !edad.ok) {
+    const aviso = AVISO_EDAD[edad.motivo];
+    return (
+      <div className="card flex gap-4 p-6">
+        <ShieldAlert size={22} className="mt-0.5 shrink-0 text-yuca-mustard" aria-hidden="true" />
+        <div>
+          <h2 className="mb-1 text-lg">{aviso.titulo}</h2>
+          <p className="text-sm leading-relaxed text-yuca-ink-soft">{aviso.detalle}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!reserva) {
     const disponibles = await standsDisponibles(db, edicionActual.id);
