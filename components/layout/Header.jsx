@@ -7,6 +7,7 @@ import { brand } from '@/lib/site';
 import { useNavLinks } from '@/hooks/useNavLinks';
 import { useScrolled } from '@/hooks/useScrollState';
 import Mascot from './Mascot';
+import AccountActions from './AccountActions';
 import MobileMenu from './MobileMenu';
 
 /**
@@ -63,12 +64,7 @@ export default function Header({ onOpenAuth }) {
 
           {/* Acciones de cuenta */}
           <div className="hidden items-center gap-2 lg:flex">
-            <button type="button" onClick={() => onOpenAuth('login')} className="btn-ghost btn-sm">
-              Iniciar sesión
-            </button>
-            <button type="button" onClick={() => onOpenAuth('signup')} className="btn-primary btn-sm">
-              Crear cuenta
-            </button>
+            <AccountActions onOpenAuth={onOpenAuth} />
           </div>
 
           {/* Disparador del menú móvil */}
