@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
-import { AlertTriangle, Inbox } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Inbox } from 'lucide-react';
 import { getDb } from '@/db';
 import { authEnabled, esStaff } from '@/lib/auth';
+import { perfilesPorVerificar } from '@/lib/perfiles';
 import { reservasPendientes } from '@/lib/reservas';
 import { edicionActual } from '@/lib/data/edicion';
 import FilaReserva from './FilaReserva';
+import FilaPerfil from './FilaPerfil';
 
 export const metadata: Metadata = { title: 'Administración' };
 
@@ -67,34 +69,65 @@ export default async function AdminPage() {
     );
   }
 
-  const pendientes = await reservasPendientes(db, edicionActual.id);
+  const [pendientes, perfiles] = await Promise.all([
+    reservasPendientes(db, edicionActual.id),
+    perfilesPorVerificar(db),
+  ]);
 
   return (
-    <div className="container-yuca py-12">
-      <header className="mb-8">
-        <h1 className="mb-2 text-3xl">Pagos por revisar</h1>
-        <p className="text-yuca-ink-soft">
-          {edicionActual.name} · {pendientes.length}{' '}
-          {pendientes.length === 1 ? 'reserva pendiente' : 'reservas pendientes'}. Compara la
-          referencia con tu extracto y confirma o rechaza.
-        </p>
-      </header>
-
-      {pendientes.length === 0 ? (
-        <div className="card flex flex-col items-center gap-3 p-12 text-center">
-          <Inbox size={32} className="text-yuca-green" aria-hidden="true" />
-          <p className="font-display text-xl text-yuca-green-deep">No hay nada pendiente</p>
-          <p className="max-w-sm text-sm text-yuca-ink-soft">
-            Cuando alguien aparte una mesa y declare su transferencia, aparecerá aquí.
+    <div className="container-yuca flex flex-col gap-12 py-12">
+      <section>
+        <header className="mb-8">
+          <h1 className="mb-2 text-3xl">Pagos por revisar</h1>
+          <p className="text-yuca-ink-soft">
+            {edicionActual.name} · {pendientes.length}{' '}
+            {pendientes.length === 1 ? 'reserva pendiente' : 'reservas pendientes'}. Compara la
+            referencia con tu extracto y confirma o rechaza.
           </p>
-        </div>
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {pendientes.map((reserva) => (
-            <FilaReserva key={reserva.reservationId} reserva={reserva} />
-          ))}
-        </ul>
-      )}
+        </header>
+
+        {pendientes.length === 0 ? (
+          <div className="card flex flex-col items-center gap-3 p-12 text-center">
+            <Inbox size={32} className="text-yuca-green" aria-hidden="true" />
+            <p className="font-display text-xl text-yuca-green-deep">No hay nada pendiente</p>
+            <p className="max-w-sm text-sm text-yuca-ink-soft">
+              Cuando alguien aparte una mesa y declare su transferencia, aparecerá aquí.
+            </p>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {pendientes.map((reserva) => (
+              <FilaReserva key={reserva.reservationId} reserva={reserva} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <header className="mb-8">
+          <h2 className="mb-2 text-3xl">Perfiles por verificar</h2>
+          <p className="text-yuca-ink-soft">
+            {perfiles.length} {perfiles.length === 1 ? 'perfil nuevo' : 'perfiles nuevos'}. Revisa
+            que no sea spam antes de darle la insignia de verificado.
+          </p>
+        </header>
+
+        {perfiles.length === 0 ? (
+          <div className="card flex flex-col items-center gap-3 p-12 text-center">
+            <BadgeCheck size={32} className="text-yuca-green" aria-hidden="true" />
+            <p className="font-display text-xl text-yuca-green-deep">No hay nada por revisar</p>
+            <p className="max-w-sm text-sm text-yuca-ink-soft">
+              Cuando alguien cree su perfil de expositor, aparecerá aquí.
+            </p>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {perfiles.map((perfil) => (
+              <FilaPerfil key={perfil.id} perfil={perfil} />
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

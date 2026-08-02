@@ -34,6 +34,16 @@ export type ArtCategory =
   | 'Webcomics'
   | 'Otro';
 
+export const ART_CATEGORIES: ArtCategory[] = [
+  'Ilustración Digital',
+  'Ilustración Tradicional',
+  'Cómics',
+  'Pines',
+  'Stickers',
+  'Webcomics',
+  'Otro',
+];
+
 export interface Exhibitor {
   id: string;
   /** Público al que pertenece; decide en qué zona va su mesa. */

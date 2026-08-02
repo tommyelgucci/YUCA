@@ -5,8 +5,10 @@ al final de una fase.
 
 ## Última actualización
 
-**2026-08-02** — sincronizado con `main` en `85b80f3` (PR #2 mergeado:
-"proyecto yuca landing wd5rae"). Working tree limpio, sin cambios pendientes.
+**2026-08-02** — construida la segunda mitad de la Fase 2 sobre `85b80f3`:
+`/mi-cuenta` completo y `/admin` con cola de verificación de perfiles. Ver
+detalle abajo. `npm test` en verde (18 pruebas: 14 de reservas + 4 de
+perfiles).
 
 ## Hecho
 
@@ -29,20 +31,59 @@ probado (14 pruebas contra PGlite), Clerk con roles (`asistente`/`expositor`/
 - Compañero de mesa: `stand_companions`, cupo por mesa, sólo el titular
   gestiona quién entra.
 
-## Falta (rumbo inmediato)
+## Hecho (Fase 2, segunda mitad — 2026-08-02)
 
-Orden sugerido — cada uno depende del anterior:
+Los cuatro puntos que estaban en el rumbo inmediato ya están construidos:
 
-1. **Registro de expositor** — crear perfil propio al entrar con Clerk
-   (nombre, categoría, redes, bio). Sin esto no hay quién reserve mesa desde
-   la web.
-2. **Pantalla "mi cuenta"** (`/mi-cuenta`) — elegir stand disponible del mapa,
-   ver el QR de transferencia, declarar que se pagó.
-3. **Subida del comprobante** — requiere decidir almacenamiento (Supabase
-   Storage es lo más natural si la base ya es Postgres/Supabase). Bloquea el
-   punto 2 en su forma final.
-4. **Pantalla de verificación de perfiles** para staff — antes de aprobar el
-   pago hay que poder revisar que el perfil del expositor esté completo.
+1. **Registro de expositor** — `lib/perfiles.ts` (`crearPerfil`): perfil con
+   nombre, público (artistas/comidas/emprendimientos), categorías de arte,
+   bio y redes. Slug generado del nombre, con sufijo numérico si choca con
+   otro. Un `clerkUserId` no puede tener dos perfiles (índice único).
+2. **Pantalla "mi cuenta"** (`app/mi-cuenta/`) — según el estado de la
+   persona muestra: formulario de alta, selector de mesas libres agrupadas
+   por tipo con el precio de la preventa vigente, o el panel de la reserva
+   activa (monto, plazo, comprobante, cancelar).
+3. **Comprobante** — se declara la referencia y, opcionalmente, una imagen.
+   Decisión: la imagen se guarda como `data:` URL en `reservations.proof_url`
+   en vez de en un bucket externo, para no depender de credenciales de
+   almacenamiento que nadie me había pasado. Límite 4 MB. Migrar a Supabase
+   Storage más adelante sólo toca `declararComprobanteAction`.
+4. **Verificación de perfiles** — segunda cola en `/admin`
+   (`lib/perfiles.ts#perfilesPorVerificar` + `FilaPerfil.tsx`): el staff ve
+   perfiles nuevos y los marca verificados con un botón.
+
+De paso: acompañantes (`agregarCompanero`/`quitarCompanero`, ya existían en
+`lib/reservas.ts` desde el PR #2) ahora tienen interfaz en "mi cuenta".
+
+`db/perfiles.test.ts` (4 pruebas nuevas): alta genera slug, un `clerkUserId`
+no puede repetirse, dos nombres iguales no chocan de slug, verificar saca el
+perfil de la cola.
+
+### Pendiente de conectar (importante, no soy yo quien lo puede decidir solo)
+
+El mapa (`StandMap`), la lista de participantes y `/artistas/[slug]` **siguen
+leyendo `lib/data/` (mocks)**, no la base. Un perfil o una reserva reales
+creados desde `/mi-cuenta` no se van a ver todavía en la web pública ni el
+botón "Ver perfil" del admin va a resolver: falta la migración que haga de la
+base la fuente de verdad también en las páginas públicas. Tiene sentido
+dejarla para cuando la Fase 4 abra con expositores reales que mostrar, pero
+es una decisión de producto, no puramente técnica — conviene confirmarla
+antes de tocar `StandMap.tsx` / `ParticipantesPanel.tsx`, que hoy están bien
+probados visualmente contra los mocks.
+
+### Otro hallazgo, sin tocar
+
+El botón "Iniciar sesión" / "Crear cuenta" del `Header` abre `RegisterModal`
+(un modal local que no llega a crear cuenta real) en vez de llevar a
+`/iniciar-sesion` o `/crear-cuenta`, que sí son Clerk de verdad. Es
+inconsistente pero no lo cambié: decidir si el modal se retira o se conecta al
+Clerk real es una decisión de producto/UX, no algo para resolver de paso.
+
+### Sin poder procesar
+
+El audio compartido (`AUDIO20260731125818_2.m4a`) no se pudo transcribir con
+las herramientas de esta sesión (sólo lee binarios de imagen/PDF/notebook). Si
+tiene información relevante, conviene pasarla como texto.
 
 ## Fase 3 (después de cerrar la 2)
 

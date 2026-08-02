@@ -11,7 +11,7 @@ npm install
 npm run dev          # http://localhost:3000
 npm run build
 npm start
-npm test             # db/reservas.test.ts contra PGlite (Postgres real en WASM)
+npm test             # db/reservas.test.ts + db/perfiles.test.ts contra PGlite (Postgres real en WASM)
 npm run lint
 
 npm run db:generate   # SQL desde db/schema.ts
@@ -24,9 +24,10 @@ claves de Clerk oculta cuentas y `/admin`. Copiar `.env.example` para
 activarlos.
 
 **Antes de dar por terminado cualquier cambio en `lib/reservas.ts`,
-`db/schema.ts` o migraciones: correr `npm test`.** Cubre reserva feliz, doble
-reserva, carrera simultánea, doble mesa por expositor, confirmación,
-expiración, cancelación, mesas de organización y acompañantes.
+`lib/perfiles.ts`, `db/schema.ts` o migraciones: correr `npm test`.** Cubre
+reserva feliz, doble reserva, carrera simultánea, doble mesa por expositor,
+confirmación, expiración, cancelación, mesas de organización, acompañantes,
+alta de perfil, choque de slug y verificación de staff.
 
 ## Convenciones de este repo
 
@@ -51,6 +52,7 @@ expiración, cancelación, mesas de organización y acompañantes.
 | Vas a tocar…                          | Mira primero                                    |
 | -------------------------------------- | ------------------------------------------------ |
 | Reglas de reserva/expiración            | `lib/reservas.ts`, `db/reservas.test.ts`          |
+| Perfil de expositor y verificación      | `lib/perfiles.ts`, `db/perfiles.test.ts`, `app/mi-cuenta/`, `app/admin/` |
 | El mapa de stands                       | `lib/data/feria.ts` (datos), `components/evento/StandMap.tsx` (render), `hooks/useStandSelection.ts` (estado compartido) |
 | Roles y permisos                        | `lib/auth.ts`, `middleware.ts` — y repetir el chequeo de staff en cada Server Action nueva |
 | Contenido de la portada                 | `lib/site.js`                                     |

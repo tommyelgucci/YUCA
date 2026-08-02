@@ -27,7 +27,8 @@ sin claves de Clerk oculta las cuentas y el panel. Para activarlos, copia
 | `/`                 | Portada: comunidad, agenda, ediciones pasadas, categorías, Discord |
 | `/evento`           | Vista del festival con pestañas Info · Participantes · Actividades |
 | `/artistas/[slug]`  | Perfil público del expositor                                  |
-| `/admin`            | Cola de pagos por revisar (sólo rol `staff`)                  |
+| `/admin`            | Cola de pagos y de perfiles por verificar (sólo rol `staff`)  |
+| `/mi-cuenta`        | El expositor crea su perfil, elige mesa y declara su pago     |
 | `/iniciar-sesion`, `/crear-cuenta` | Clerk                                         |
 | `/api/cron/expirar-reservas` | Libera mesas con la reserva vencida                  |
 
@@ -43,7 +44,9 @@ app/
 ├── layout.tsx              Shell, metadata y tipografías
 ├── page.tsx                Portada
 ├── evento/page.tsx         Vista del evento
-└── artistas/[slug]/page.tsx Perfil de artista
+├── artistas/[slug]/page.tsx Perfil de artista
+├── mi-cuenta/              Alta de perfil, elegir mesa, comprobante, acompañantes
+└── admin/                  Cola de pagos y perfiles por verificar (staff)
 
 components/
 ├── layout/                 Header, MobileMenu, Footer, Mascot, SiteChrome
@@ -62,6 +65,8 @@ db/
 lib/
 ├── types.ts                👈 modelo de dominio (contrato UI ↔ datos)
 ├── reservas.ts             Reservar, confirmar, cancelar, expirar
+├── perfiles.ts             Alta de perfil de expositor y verificación de staff
+├── db-errores.ts           Traduce violaciones de índice único de Postgres
 ├── auth.ts                 Roles de Clerk (authEnabled, esStaff)
 ├── site.js                 Contenido de la portada
 ├── data/                   Mocks: edición, feria, expositores, actividades
@@ -193,10 +198,24 @@ datos mock, sin escrituras.
 reservas probada, Clerk con roles, panel de admin con la cola de pagos, y cron
 de expiración.
 
-**Falta (Fase 2, segunda mitad)** — registro de expositor que cree su perfil al
-entrar con Clerk, pantalla "mi cuenta" para elegir mesa y declarar la
-transferencia, subida de la captura del comprobante (necesita almacenamiento) y
-la pantalla de verificación de perfiles.
+**Hecho (Fase 2, segunda mitad)** — `/mi-cuenta`: el expositor crea su perfil
+al entrar con Clerk (`lib/perfiles.ts`), elige una mesa libre, declara la
+referencia de su transferencia y puede sumar o quitar acompañantes; `/admin`
+suma una segunda cola con los perfiles nuevos para que el staff les dé la
+insignia de verificado.
+
+La captura del comprobante se guarda como `data:` URL en la propia fila de
+`reservations` (columna `proof_url`, ya existía en el esquema) en vez de contra
+un bucket de almacenamiento: evita depender de credenciales externas para algo
+tan chico como una captura de pantalla, con un límite de 4 MB en el archivo
+subido. Si el volumen lo justifica más adelante, migrar a Supabase Storage
+sólo toca `declararComprobanteAction` en `app/mi-cuenta/acciones.ts`.
+
+⚠️ **Pendiente de conectar**: el mapa, la lista de participantes y
+`/artistas/[slug]` siguen leyendo `lib/data/` (mocks), no la base. Un perfil o
+una mesa creados de verdad en `/mi-cuenta` no van a aparecer todavía en la web
+pública — falta la migración que haga de la base la fuente de verdad también
+ahí, pensada para cuando abra la Fase 4 y haya expositores reales que mostrar.
 
 **Fase 3** — inscripción a actividades con control de cupos y la Cacería de
 Sellos con QR (necesita tolerar mala señal dentro del salón).
