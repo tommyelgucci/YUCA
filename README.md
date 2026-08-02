@@ -27,8 +27,9 @@ sin claves de Clerk oculta las cuentas y el panel. Para activarlos, copia
 | `/`                 | Portada: comunidad, agenda, ediciones pasadas, categorías, Discord |
 | `/evento`           | Vista del festival con pestañas Info · Participantes · Actividades |
 | `/artistas/[slug]`  | Perfil público del expositor                                  |
-| `/admin`            | Cola de pagos por revisar (sólo rol `staff`)                  |
+| `/admin`            | Cola de pagos y de perfiles por verificar (sólo rol `staff`)  |
 | `/admin/exportar`   | Credenciales a Excel/CSV para Illustrator                     |
+| `/mi-cuenta`        | El expositor edita su perfil y sus datos, elige mesa y declara su pago |
 | `/iniciar-sesion`, `/crear-cuenta` | Clerk                                         |
 | `/api/cron/expirar-reservas` | Libera mesas con la reserva vencida                  |
 
@@ -44,7 +45,9 @@ app/
 ├── layout.tsx              Shell, metadata y tipografías
 ├── page.tsx                Portada
 ├── evento/page.tsx         Vista del evento
-└── artistas/[slug]/page.tsx Perfil de artista
+├── artistas/[slug]/page.tsx Perfil de artista
+├── mi-cuenta/              Perfil público + datos personales, mesa, comprobante, acompañantes
+└── admin/                  Cola de pagos y perfiles por verificar (staff)
 
 components/
 ├── layout/                 Header, MobileMenu, Footer, Mascot, SiteChrome
@@ -63,6 +66,8 @@ db/
 lib/
 ├── types.ts                👈 modelo de dominio (contrato UI ↔ datos)
 ├── reservas.ts             Reservar, confirmar, cancelar, expirar
+├── perfiles.ts             Perfil de expositor: alta, edición y verificación de staff
+├── db-errores.ts           Traduce violaciones de índice único de Postgres
 ├── auth.ts                 Roles de Clerk (authEnabled, esStaff)
 ├── site.js                 Contenido de la portada
 ├── data/                   Mocks: edición, feria, expositores, actividades
@@ -194,10 +199,46 @@ datos mock, sin escrituras.
 reservas probada, Clerk con roles, panel de admin con la cola de pagos, y cron
 de expiración.
 
-**Falta (Fase 2, segunda mitad)** — registro de expositor que cree su perfil al
-entrar con Clerk, pantalla "mi cuenta" para elegir mesa y declarar la
-transferencia, subida de la captura del comprobante (necesita almacenamiento) y
-la pantalla de verificación de perfiles.
+**Hecho (Fase 2, segunda mitad)** — `/mi-cuenta`: el expositor crea y edita su
+perfil al entrar con Clerk (`lib/perfiles.ts`), carga sus datos personales,
+elige una mesa libre, declara la referencia de su transferencia y puede sumar o
+quitar acompañantes; `/admin` suma una segunda cola con los perfiles nuevos
+para que el staff les dé la insignia de verificado.
+
+### Perfil público y datos personales
+
+El perfil tiene dos mitades con público distinto, y en la interfaz son dos
+tarjetas separadas para que se vea de un vistazo qué se publica y qué no:
+
+- **Público**: nombre artístico, bio, categorías, redes. Lo ve cualquiera.
+- **Personal**: nombre completo, fecha de nacimiento, correo, teléfono, género
+  y departamento. Sólo lo ve el equipo, y existe porque verificar un perfil es
+  justamente cotejar que detrás del nombre artístico hay alguien
+  identificable, y porque hay que poder contactar a quien pagó si algo falla.
+
+Ambas viven en la misma tabla —son uno a uno con la persona, separarlas sería
+una abstracción sin uso—, así que **la frontera la sostiene `COLUMNAS_PUBLICAS`
+en `lib/perfiles.ts`**: las consultas que alimentan la web pública seleccionan
+columna por columna desde ahí, nunca `select()` entero. Añadir un dato personal
+nuevo a la tabla no lo publica solo; hay que ponerlo en esa lista a propósito.
+Una prueba lo comprueba.
+
+**El slug no cambia al renombrarse.** La dirección `/artistas/[slug]` es lo que
+el artista comparte en redes, así que cambiar de nombre artístico no puede
+romper enlaces que ya publicó. El slug se fija al crear el perfil.
+
+La captura del comprobante se guarda como `data:` URL en la propia fila de
+`reservations` (columna `proof_url`, ya existía en el esquema) en vez de contra
+un bucket de almacenamiento: evita depender de credenciales externas para algo
+tan chico como una captura de pantalla, con un límite de 4 MB en el archivo
+subido. Si el volumen lo justifica más adelante, migrar a Supabase Storage
+sólo toca `declararComprobanteAction` en `app/mi-cuenta/acciones.ts`.
+
+⚠️ **Pendiente de conectar**: el mapa, la lista de participantes y
+`/artistas/[slug]` siguen leyendo `lib/data/` (mocks), no la base. Un perfil o
+una mesa creados de verdad en `/mi-cuenta` no van a aparecer todavía en la web
+pública — falta la migración que haga de la base la fuente de verdad también
+ahí, pensada para cuando abra la Fase 4 y haya expositores reales que mostrar.
 
 **Fase 3** — inscripción a actividades con control de cupos y la Cacería de
 Sellos con QR (necesita tolerar mala señal dentro del salón).

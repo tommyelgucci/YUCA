@@ -34,6 +34,52 @@ export type ArtCategory =
   | 'Webcomics'
   | 'Otro';
 
+export const ART_CATEGORIES: ArtCategory[] = [
+  'Ilustración Digital',
+  'Ilustración Tradicional',
+  'Cómics',
+  'Pines',
+  'Stickers',
+  'Webcomics',
+  'Otro',
+];
+
+/** Los nueve departamentos de Bolivia, para el dato de residencia. */
+export const DEPARTAMENTOS = [
+  'Beni',
+  'Chuquisaca',
+  'Cochabamba',
+  'La Paz',
+  'Oruro',
+  'Pando',
+  'Potosí',
+  'Santa Cruz',
+  'Tarija',
+];
+
+/**
+ * Opciones de género.
+ *
+ * Es un dato opcional y se guarda como texto, no como enum: la lista puede
+ * crecer sin que eso obligue a migrar la base.
+ */
+export const GENEROS = ['Femenino', 'Masculino', 'No binario', 'Otro', 'Prefiero no decirlo'];
+
+/**
+ * Datos personales del expositor.
+ *
+ * Los ve el equipo, nunca la web pública: sirven para identificar a quien
+ * reserva una mesa y para poder contactarle si algo pasa con su pago.
+ */
+export interface DatosPrivados {
+  fullName: string | null;
+  birthDate: string | null;
+  contactEmail: string | null;
+  phone: string | null;
+  gender: string | null;
+  department: string | null;
+}
+
 export interface Exhibitor {
   id: string;
   /** Público al que pertenece; decide en qué zona va su mesa. */

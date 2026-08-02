@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
   index,
   integer,
   pgEnum,
@@ -54,6 +55,18 @@ export const convocatoriaAudience = pgEnum('convocatoria_audience', [
 /**
  * Perfil de expositor. Lo crea y edita la propia persona al registrarse;
  * `verified` es lo único que sólo puede tocar el staff.
+ *
+ * La tabla mezcla dos cosas con público distinto:
+ *
+ * - lo **público**, que se muestra en la web a cualquiera (nombre artístico,
+ *   bio, categorías, redes);
+ * - los **datos personales**, que sólo ve el equipo para poder identificar a
+ *   quien reserva una mesa y contactarle si algo pasa con su pago.
+ *
+ * Están en la misma tabla porque son uno a uno con la persona y separarlos en
+ * dos sería una abstracción sin uso real hoy. Lo que impide filtrarlos es que
+ * las consultas de la web pública seleccionan columna por columna
+ * (`COLUMNAS_PUBLICAS` en `lib/perfiles.ts`), nunca `select()` entero.
  */
 export const exhibitors = pgTable(
   'exhibitors',
@@ -74,6 +87,22 @@ export const exhibitors = pgTable(
     tiktok: text('tiktok'),
     facebook: text('facebook'),
     web: text('web'),
+
+    /* --- Datos personales: sólo para el equipo, nunca para la web pública --- */
+
+    /** Nombre legal, para cotejar con el comprobante de la transferencia. */
+    fullName: text('full_name'),
+    /** Sin hora ni zona: es un dato de calendario, no un instante. */
+    birthDate: date('birth_date'),
+    /** Correo de contacto. Puede no ser el mismo con el que entró a Clerk. */
+    contactEmail: text('contact_email'),
+    /** Teléfono de contacto; en la práctica, su WhatsApp. */
+    phone: text('phone'),
+    /** Texto libre acotado en la interfaz, no un enum: las opciones cambian. */
+    gender: text('gender'),
+    /** Departamento de Bolivia donde vive. */
+    department: text('department'),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

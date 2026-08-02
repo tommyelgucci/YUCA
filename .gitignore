@@ -21,3 +21,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Artefacto de compilación de TypeScript: se regenera solo y sólo produce conflictos.
+tsconfig.tsbuildinfo

@@ -1,6 +1,8 @@
 import { and, eq, inArray, lt, sql } from 'drizzle-orm';
 import type { YucaDb } from '@/db';
-import { editions, exhibitors, reservations, standCompanions, stands } from '@/db/schema';
+import { editions, espacios, exhibitors, reservations, standCompanions, stands } from '@/db/schema';
+import { esViolacionUnica } from '@/lib/db-errores';
+import type { StandKind } from '@/lib/types';
 
 /**
  * Reservas de mesa.
@@ -21,45 +23,6 @@ export type ResultadoReserva =
       ok: false;
       motivo: 'stand-inexistente' | 'stand-no-disponible' | 'ya-reservada' | 'ya-tienes-mesa';
     };
-
-/** Código de Postgres para violación de restricción única. */
-const UNIQUE_VIOLATION = '23505';
-
-type ErrorPg = {
-  code?: string;
-  constraint?: string;
-  constraint_name?: string;
-  detail?: string;
-  message?: string;
-  cause?: unknown;
-};
-
-/**
- * Busca el error real de Postgres dentro de la cadena de causas.
- *
- * Drizzle envuelve el error del driver en uno propio ("Failed query: …"), así
- * que el `code` no está en el error que se recibe sino en su `cause`.
- */
-function errorPostgres(error: unknown): ErrorPg | null {
-  let actual: unknown = error;
-
-  for (let salto = 0; salto < 5 && actual; salto += 1) {
-    const candidato = actual as ErrorPg;
-    if (candidato.code === UNIQUE_VIOLATION) return candidato;
-    actual = candidato.cause;
-  }
-
-  return null;
-}
-
-function esViolacionUnica(error: unknown, indice: string): boolean {
-  const pg = errorPostgres(error);
-  if (!pg) return false;
-
-  // Según el driver el nombre del índice viaja en un campo u otro.
-  const pistas = [pg.constraint_name, pg.constraint, pg.detail, pg.message];
-  return pistas.some((pista) => typeof pista === 'string' && pista.includes(indice));
-}
 
 /**
  * Aparta una mesa para un expositor y abre el plazo de pago.
@@ -351,4 +314,74 @@ export async function reservasPendientes(db: YucaDb, editionId: string) {
     .innerJoin(exhibitors, eq(reservations.exhibitorId, exhibitors.id))
     .where(and(eq(reservations.status, 'pendiente'), eq(stands.editionId, editionId)))
     .orderBy(sql`${reservations.createdAt} asc`);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Consultas de "mi cuenta"                                                    */
+/* -------------------------------------------------------------------------- */
+
+/** Mesas libres de la edición, para que el expositor elija una. */
+export async function standsDisponibles(db: YucaDb, editionId: string) {
+  return db
+    .select({
+      code: stands.code,
+      numero: stands.numero,
+      kind: stands.kind,
+      espacioNombre: espacios.name,
+    })
+    .from(stands)
+    .innerJoin(espacios, eq(stands.espacioId, espacios.id))
+    .where(and(eq(stands.editionId, editionId), eq(stands.status, 'disponible')))
+    .orderBy(stands.kind, stands.numero);
+}
+
+/**
+ * Tipo real de una mesa, leído de la base.
+ *
+ * El precio depende del tipo (`lib/data/preventas.ts`); se resuelve aquí y no
+ * con lo que mande el cliente, porque el código de la mesa es lo único que
+ * hace falta para que el importe no se pueda manipular desde el formulario.
+ */
+export async function kindDeStand(
+  db: YucaDb,
+  params: { editionId: string; standCode: string },
+): Promise<StandKind | null> {
+  const [stand] = await db
+    .select({ kind: stands.kind })
+    .from(stands)
+    .where(and(eq(stands.editionId, params.editionId), eq(stands.code, params.standCode)))
+    .limit(1);
+
+  return stand?.kind ?? null;
+}
+
+/** La reserva viva (pendiente o confirmada) de un expositor, si tiene una. */
+export async function reservaActivaDe(db: YucaDb, exhibitorId: string) {
+  const [reserva] = await db
+    .select({
+      id: reservations.id,
+      status: reservations.status,
+      amountBob: reservations.amountBob,
+      proofReference: reservations.proofReference,
+      expiresAt: reservations.expiresAt,
+      standCode: stands.code,
+      standNumero: stands.numero,
+      standKind: stands.kind,
+      maxCompaneros: stands.maxCompaneros,
+    })
+    .from(reservations)
+    .innerJoin(stands, eq(reservations.standId, stands.id))
+    .where(
+      and(
+        eq(reservations.exhibitorId, exhibitorId),
+        inArray(reservations.status, ['pendiente', 'confirmada']),
+      ),
+    )
+    .limit(1);
+
+  if (!reserva) return null;
+
+  // El filtro de arriba ya garantiza uno de estos dos valores; sólo hace
+  // falta decírselo a TypeScript, que ve el enum completo de la columna.
+  return { ...reserva, status: reserva.status as 'pendiente' | 'confirmada' };
 }

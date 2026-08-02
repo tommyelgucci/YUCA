@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireDb } from '@/db';
 import { esStaff, getUsuarioId } from '@/lib/auth';
+import { marcarVerificado } from '@/lib/perfiles';
 import { cancelarReserva, confirmarPago } from '@/lib/reservas';
 
 /**
@@ -55,4 +56,18 @@ export async function rechazarPagoAction(
   return hecho
     ? { ok: true, mensaje: 'Reserva cancelada. La mesa volvió a estar disponible.' }
     : { ok: false, mensaje: 'Esa reserva ya no estaba activa.' };
+}
+
+/** Otorga la insignia de verificado tras revisar el perfil del expositor. */
+export async function verificarPerfilAction(exhibitorId: string): Promise<ResultadoAccion> {
+  await exigirStaff();
+  const db = requireDb();
+
+  const hecho = await marcarVerificado(db, { exhibitorId, verified: true });
+  revalidatePath('/admin');
+  revalidatePath('/evento');
+
+  return hecho
+    ? { ok: true, mensaje: 'Perfil verificado.' }
+    : { ok: false, mensaje: 'No se encontró ese perfil.' };
 }
