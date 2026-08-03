@@ -5,6 +5,36 @@ al final de una fase.
 
 ## Última actualización
 
+**2026-08-03 (noche)** — **la base de datos existe y está viva.** Supabase
+`yuca` (São Paulo, Data API apagada), 11 tablas, 6 de 6 migraciones aplicadas y
+sembrada: 2 ediciones, 2 espacios, 54 mesas, 18 expositores de demostración, 18
+reservas, 4 actividades. Clerk configurado con cuentas reales y el rol de staff
+funcionando. **Con esto la etapa 0 de `PLAN.md` queda cerrada.**
+
+Costó una tarde entera, y no por el proyecto sino porque tres herramientas
+fallan sin decir por qué. Los tres agujeros están tapados:
+
+- `drizzle-kit` no lee `.env.local` (sólo `.env`) y devuelve código 1 sin
+  imprimir nada. Se carga a mano en `drizzle.config.ts`, `check.ts` y `seed.ts`.
+- Clerk **no mete `publicMetadata` en el token de sesión** salvo que se
+  personalice el token en su panel. `getRol()` ahora pregunta al perfil si no
+  lo encuentra en el token; sin eso, marcar a alguien como staff no servía de
+  nada y no había ningún error que lo explicara.
+- **`npm run db:check`** (nuevo) diagnostica el entorno y la conexión, y traduce
+  los tres fallos habituales. Es lo que hay que correr cuando algo no conecta.
+
+Además: `db:seed` **se niega a correr** si detecta expositores registrados de
+verdad, porque vacía las tablas antes de escribir y ahora hay una base real que
+podría borrar.
+
+### Pendiente inmediato
+
+- **Los 18 expositores sembrados son de mentira** (Estudio Lunaria, Papaya
+  Comics…). Hay que borrarlos antes de abrir la convocatoria real, o se
+  mezclarán con los de verdad en el mapa y en las credenciales.
+- Las páginas públicas (`StandMap`, participantes, `/artistas/[slug]`) siguen
+  leyendo `lib/data/`, no la base. Es lo siguiente de la etapa 0.
+
 **2026-08-03** — dos bloques: aceptación de las reglas antes de reservar, y el
 acompañante como expositor verificado. Con eso quedan **cuatro** huecos del
 pliego cerrados; los que faltan (QR de pago, instrucciones de ingreso,
