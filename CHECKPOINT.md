@@ -562,7 +562,9 @@ yo hubiera supuesto. Marcado contra lo que ya existe:
 - Druida también lleva feria: cuando tenga sede, la vista de evento pasa a
   `/evento/[slug]` para servir dos planos.
 - Precio real de entrada (hoy figura libre).
-- `NEXT_PUBLIC_SITE_URL` con el dominio real.
+- ~~`NEXT_PUBLIC_SITE_URL` con el dominio real.~~ **Confirmado el 2026-08-03: es
+  `proyectoyuca.com`**, no un `.bo` — en redes el usuario es `@proyecto_yuca.bo` y
+  se confunde. Queda apuntarlo al despliegue.
 - Fotos de eventos, arte de Yuquita, `public/og-image.jpg`.
 - Expositores y plano de `lib/data/` siguen siendo de demostración salvo el
   trazado de las salas.

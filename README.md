@@ -1,6 +1,6 @@
 # Proyecto Yuca
 
-Web y plataforma de **Proyecto Yuca** (proyecto_yuca.bo), comunidad y productora
+Web y plataforma de **Proyecto Yuca** (proyectoyuca.com), comunidad y productora
 de eventos artísticos en Bolivia, casa del **YukaWaii Fest**.
 
 Stack: **Next.js 15 (App Router) + TypeScript + Tailwind CSS + Framer Motion +
@@ -391,7 +391,7 @@ Marcado con `TODO` en el código:
 - Druida también lleva feria: cuando tenga sede, la vista de evento debe pasar a
   `/evento/[slug]` para servir los dos planos.
 - Precio real de las mesas por sector y precio de entrada (hoy figura libre).
-- `NEXT_PUBLIC_SITE_URL` con el dominio real (miniaturas de Open Graph).
+- Apuntar `proyectoyuca.com` al despliegue y poner `NEXT_PUBLIC_SITE_URL` (miniaturas de Open Graph).
 - Fotos de eventos, arte de Yuquita y `public/og-image.jpg`.
 - Los expositores y el plano de `lib/data/` son de demostración.
 - Qué convocatorias siguen abiertas y hasta cuándo (las tres figuran abiertas).
