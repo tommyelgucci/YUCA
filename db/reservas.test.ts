@@ -13,6 +13,7 @@ import {
   confirmarPago,
   expirarReservasVencidas,
   registrarComprobante,
+  reservaActivaDe,
   reservarStand,
 } from '../lib/reservas';
 
@@ -68,11 +69,17 @@ async function baseDePrueba() {
     .values([
       { clerkUserId: 'user_ana', slug: 'ana', displayName: 'Ana' },
       { clerkUserId: 'user_beto', slug: 'beto', displayName: 'Beto' },
+      // Verificada: es la única que puede compartir mesa de acompañante.
+      { clerkUserId: 'user_cami', slug: 'cami', displayName: 'Cami', verified: true },
+      { clerkUserId: 'user_dani', slug: 'dani', displayName: 'Dani', verified: true },
+      // Sin verificar, para comprobar que el equipo tiene que aprobarla antes.
+      { clerkUserId: 'user_eli', slug: 'eli', displayName: 'Eli' },
     ])
     .returning({ id: schema.exhibitors.id, slug: schema.exhibitors.slug });
 
-  const ana = artistas.find((a) => a.slug === 'ana')!.id;
-  const beto = artistas.find((a) => a.slug === 'beto')!.id;
+  const porSlug = (slug: string) => artistas.find((a) => a.slug === slug)!.id;
+  const ana = porSlug('ana');
+  const beto = porSlug('beto');
 
   const estadoStand = async (code: string) => {
     const [stand] = await db
@@ -82,7 +89,7 @@ async function baseDePrueba() {
     return stand.status;
   };
 
-  return { db, ana, beto, estadoStand };
+  return { db, ana, beto, porSlug, estadoStand };
 }
 
 test('reservar una mesa libre la deja apartada, no ocupada', async () => {
@@ -333,7 +340,18 @@ test('la base rechaza una reserva sin reglas aceptadas', async () => {
   );
 });
 
-test('el titular puede sumar un compañero de mesa', async () => {
+test('la reserva activa trae la sala, que la pantalla de confirmación necesita', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana, ...TANDA });
+
+  const reserva = await reservaActivaDe(db, ana);
+
+  assert.equal(reserva?.espacioNombre, 'Salón Lirio');
+  assert.equal(reserva?.standNumero, 20);
+});
+
+test('el titular puede sumar un compañero verificado', async () => {
   const { db, ana } = await baseDePrueba();
 
   const reserva = await reservarStand(db, {
@@ -347,15 +365,179 @@ test('el titular puede sumar un compañero de mesa', async () => {
   const resultado = await agregarCompanero(db, {
     reservationId: reserva.reservationId,
     exhibitorId: ana,
-    displayName: 'Guamancita',
-    instagram: '@guamancita',
+    slug: 'cami',
   });
 
   assert.equal(resultado.ok, true);
+
+  // El nombre sale del perfil, no de lo que escriba el titular.
+  const companeros = await companerosDe(db, reserva.reservationId);
   assert.deepEqual(
-    (await companerosDe(db, reserva.reservationId)).map((c) => c.displayName),
-    ['Guamancita'],
+    companeros.map((c) => [c.displayName, c.slug]),
+    [['Cami', 'cami']],
   );
+});
+
+test('no se puede sumar a alguien que el equipo no verificó', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) throw new Error('la reserva debería haber entrado');
+
+  const resultado = await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    slug: 'eli',
+  });
+
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.ok === false && resultado.motivo, 'sin-verificar');
+  assert.equal((await companerosDe(db, reserva.reservationId)).length, 0);
+});
+
+test('no se puede sumar a alguien que no existe', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) throw new Error('la reserva debería haber entrado');
+
+  const resultado = await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    slug: 'nadie-con-este-nombre',
+  });
+
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.ok === false && resultado.motivo, 'no-existe');
+});
+
+test('el titular no puede sumarse a sí mismo', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) throw new Error('la reserva debería haber entrado');
+
+  const resultado = await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    slug: 'ana',
+  });
+
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.ok === false && resultado.motivo, 'eres-tu');
+});
+
+test('quien ya tiene mesa propia no puede compartir la de otro', async () => {
+  const { db, ana, porSlug } = await baseDePrueba();
+
+  // Cami está verificada, pero aparta su propia mesa.
+  await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C21',
+    exhibitorId: porSlug('cami'),
+    ...TANDA,
+  });
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) throw new Error('la reserva debería haber entrado');
+
+  const resultado = await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    slug: 'cami',
+  });
+
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.ok === false && resultado.motivo, 'tiene-mesa');
+});
+
+test('nadie comparte dos mesas a la vez', async () => {
+  const { db, ana, beto } = await baseDePrueba();
+
+  const deAna = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  const deBeto = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C21',
+    exhibitorId: beto,
+    ...TANDA,
+  });
+  if (!deAna.ok || !deBeto.ok) throw new Error('las reservas deberían haber entrado');
+
+  const primera = await agregarCompanero(db, {
+    reservationId: deAna.reservationId,
+    exhibitorId: ana,
+    slug: 'cami',
+  });
+  const segunda = await agregarCompanero(db, {
+    reservationId: deBeto.reservationId,
+    exhibitorId: beto,
+    slug: 'cami',
+  });
+
+  assert.equal(primera.ok, true);
+  assert.equal(segunda.ok, false);
+  assert.equal(segunda.ok === false && segunda.motivo, 'ya-comparte');
+});
+
+test('quien compartía una mesa cancelada puede compartir otra', async () => {
+  const { db, ana, beto } = await baseDePrueba();
+
+  const deAna = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!deAna.ok) throw new Error('la reserva debería haber entrado');
+
+  await agregarCompanero(db, {
+    reservationId: deAna.reservationId,
+    exhibitorId: ana,
+    slug: 'cami',
+  });
+  await cancelarReserva(db, { reservationId: deAna.reservationId, motivo: 'Se arrepintió' });
+
+  // La fila vieja sigue ahí como historial, pero no le ata a nada.
+  const deBeto = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C21',
+    exhibitorId: beto,
+    ...TANDA,
+  });
+  if (!deBeto.ok) throw new Error('la reserva debería haber entrado');
+
+  const resultado = await agregarCompanero(db, {
+    reservationId: deBeto.reservationId,
+    exhibitorId: beto,
+    slug: 'cami',
+  });
+
+  assert.equal(resultado.ok, true);
 });
 
 test('nadie puede sumar compañeros a la mesa de otro', async () => {
@@ -372,7 +554,7 @@ test('nadie puede sumar compañeros a la mesa de otro', async () => {
   const intruso = await agregarCompanero(db, {
     reservationId: reserva.reservationId,
     exhibitorId: beto,
-    displayName: 'Colado',
+    slug: 'cami',
   });
 
   assert.equal(intruso.ok, false);
@@ -395,12 +577,12 @@ test('la mesa no admite más compañeros que su cupo', async () => {
   const primero = await agregarCompanero(db, {
     reservationId: reserva.reservationId,
     exhibitorId: ana,
-    displayName: 'Primera',
+    slug: 'cami',
   });
   const segundo = await agregarCompanero(db, {
     reservationId: reserva.reservationId,
     exhibitorId: ana,
-    displayName: 'Segunda',
+    slug: 'dani',
   });
 
   assert.equal(primero.ok, true);
@@ -422,7 +604,7 @@ test('la mesa liberada queda sin compañeros para el siguiente', async () => {
   await agregarCompanero(db, {
     reservationId: reserva.reservationId,
     exhibitorId: ana,
-    displayName: 'Guamancita',
+    slug: 'cami',
   });
   await cancelarReserva(db, { reservationId: reserva.reservationId, motivo: 'Se arrepintió' });
 

@@ -11,7 +11,7 @@ npm install
 npm run dev          # http://localhost:3000
 npm run build
 npm start
-npm test             # edad + reservas + perfiles + credenciales (PGlite = Postgres real en WASM)
+npm test             # edad + reservas + perfiles + tienda + credenciales (PGlite = Postgres real en WASM)
 npm run lint
 
 npm run db:generate   # SQL desde db/schema.ts
@@ -24,12 +24,12 @@ claves de Clerk oculta cuentas y `/admin`. Copiar `.env.example` para
 activarlos.
 
 **Antes de dar por terminado cualquier cambio en `lib/reservas.ts`,
-`lib/perfiles.ts`, `lib/edad.ts`, `db/schema.ts` o migraciones: correr
+`lib/perfiles.ts`, `lib/edad.ts`, `lib/tienda.ts`, `db/schema.ts` o migraciones: correr
 `npm test`.** Cubre reserva feliz, doble reserva, carrera simultánea, doble
 mesa por expositor, confirmación, expiración, cancelación, mesas de
 organización, acompañantes, alta de perfil, choque de slug, verificación de
-staff, los tres tramos de edad, el permiso del tutor y la constancia de las
-reglas aceptadas.
+staff, los tres tramos de edad, el permiso del tutor, la constancia de las
+reglas aceptadas y las condiciones del acompañante de mesa.
 
 ## Convenciones de este repo
 
@@ -57,15 +57,20 @@ reglas aceptadas.
 | Perfil de expositor y verificación      | `lib/perfiles.ts`, `db/perfiles.test.ts`, `app/mi-cuenta/`, `app/admin/` |
 | Edad mínima y permiso del tutor         | `lib/edad.ts`, `lib/edad.test.ts` |
 | Reglas que se aceptan al reservar       | `lib/data/reglamento.ts` — al cambiar el texto, **subir `version`** |
+| Catálogo, productos y reseñas           | `lib/tienda.ts`, `db/tienda.test.ts` |
 | Públicos (artistas/comidas/tiendas/…)   | `AUDIENCIAS` en `lib/types.ts` — un solo sitio |
 | El mapa de stands                       | `lib/data/feria.ts` (datos), `components/evento/StandMap.tsx` (render), `hooks/useStandSelection.ts` (estado compartido) |
 | Roles y permisos                        | `lib/auth.ts`, `middleware.ts` — y repetir el chequeo de staff en cada Server Action nueva |
 | Contenido de la portada                 | `lib/site.js`                                     |
 | Convocatorias / fases de inscripción     | `lib/data/convocatorias.ts`, función `ctaMesa()`  |
 | Precios vigentes                        | `lib/data/preventas.ts`                           |
+| Qué cuesta mantener la plataforma       | [`COSTOS.md`](COSTOS.md) — de ahí sale el precio de la membresía |
 | Esquema de datos                        | `db/schema.ts` → `db:generate` → revisar el SQL antes de aplicar |
 
 ## Estado del proyecto
 
-Ver [`CHECKPOINT.md`](CHECKPOINT.md) para qué está hecho, qué falta y el
-rumbo inmediato — actualizarlo al cerrar cada bloque de trabajo relevante.
+- [`CHECKPOINT.md`](CHECKPOINT.md) — qué está hecho y qué falta. Actualizarlo al
+  cerrar cada bloque de trabajo relevante.
+- [`PLAN.md`](PLAN.md) — en qué orden se hace lo que falta y por qué.
+- [`COSTOS.md`](COSTOS.md) — qué cuesta sostener esto; de ahí sale el precio de
+  la membresía.

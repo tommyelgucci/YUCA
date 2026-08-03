@@ -1,5 +1,23 @@
 import type { Config } from 'drizzle-kit';
 
+/*
+ * drizzle-kit lee `.env`, nunca `.env.local`.
+ *
+ * Pero `.env.local` es el archivo que usa Next.js, el que documenta
+ * `.env.example` y el que la gente crea de verdad. Sin esta línea, `db:migrate`
+ * no encuentra ninguna variable, cae en la URL de localhost de más abajo y
+ * falla con un error de conexión que en ningún momento insinúa que el problema
+ * fue de dónde se leyó el entorno.
+ *
+ * Lo que ya venga del entorno manda sobre el archivo, así que en producción o
+ * en CI las variables de verdad no las pisa nadie.
+ */
+try {
+  process.loadEnvFile('.env.local');
+} catch {
+  // No hay `.env.local` (CI, o quien use `.env` a secas): se sigue igual.
+}
+
 export default {
   schema: './db/schema.ts',
   out: './db/migrations',

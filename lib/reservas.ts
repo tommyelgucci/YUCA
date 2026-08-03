@@ -203,8 +203,19 @@ export async function expirarReservasVencidas(db: YucaDb, ahora = new Date()): P
 /* -------------------------------------------------------------------------- */
 
 export type ResultadoCompanero =
-  | { ok: true; companionId: string }
-  | { ok: false; motivo: 'reserva-inactiva' | 'sin-cupo' | 'no-es-tuya' };
+  | { ok: true; companionId: string; displayName: string }
+  | {
+      ok: false;
+      motivo:
+        | 'reserva-inactiva'
+        | 'sin-cupo'
+        | 'no-es-tuya'
+        | 'no-existe'
+        | 'sin-verificar'
+        | 'eres-tu'
+        | 'tiene-mesa'
+        | 'ya-comparte';
+    };
 
 /**
  * Suma un acompañante a una mesa.
@@ -214,18 +225,17 @@ export type ResultadoCompanero =
  * comparten antes de transferir. Si la reserva se cae, los acompañantes se van
  * con ella: cuelgan de la reserva, no de la mesa.
  *
+ * El acompañante se identifica **por el slug de su perfil**, no por un nombre
+ * escrito a mano: la organización pidió que quien comparta mesa sea alguien
+ * registrado y verificado. Eso además da su nombre, sus redes y sus categorías
+ * para la credencial, que antes salían en blanco.
+ *
  * `exhibitorId` es quien dice ser el titular; se comprueba contra la reserva
  * para que nadie sume gente a la mesa de otro.
  */
 export async function agregarCompanero(
   db: YucaDb,
-  params: {
-    reservationId: string;
-    exhibitorId: string;
-    displayName: string;
-    instagram?: string;
-    contacto?: string;
-  },
+  params: { reservationId: string; exhibitorId: string; slug: string },
 ): Promise<ResultadoCompanero> {
   return db.transaction(async (tx) => {
     const [reserva] = await tx
@@ -247,6 +257,58 @@ export async function agregarCompanero(
       return { ok: false, motivo: 'reserva-inactiva' } as const;
     }
 
+    /*
+     * Se bloquea la fila del invitado antes de mirar nada suyo.
+     *
+     * Sin esto, dos titulares invitando a la misma persona a la vez pasarían
+     * los dos la comprobación de "no comparte ninguna mesa" y acabaría en dos
+     * mesas. La regla cruza tablas (acompañante ↔ estado de la reserva), así
+     * que no se puede imponer con un índice único parcial como las demás; el
+     * candado sobre el expositor es lo que hace las veces.
+     */
+    const [invitado] = await tx
+      .select({
+        id: exhibitors.id,
+        displayName: exhibitors.displayName,
+        verified: exhibitors.verified,
+      })
+      .from(exhibitors)
+      .where(eq(exhibitors.slug, params.slug.trim().toLowerCase()))
+      .limit(1)
+      .for('update');
+
+    if (!invitado) return { ok: false, motivo: 'no-existe' } as const;
+    if (invitado.id === params.exhibitorId) return { ok: false, motivo: 'eres-tu' } as const;
+    if (!invitado.verified) return { ok: false, motivo: 'sin-verificar' } as const;
+
+    // Quien ya tiene mesa propia no comparte la de otro: sería tener dos.
+    const [suya] = await tx
+      .select({ id: reservations.id })
+      .from(reservations)
+      .where(
+        and(
+          eq(reservations.exhibitorId, invitado.id),
+          inArray(reservations.status, ['pendiente', 'confirmada']),
+        ),
+      )
+      .limit(1);
+
+    if (suya) return { ok: false, motivo: 'tiene-mesa' } as const;
+
+    const [compartida] = await tx
+      .select({ id: standCompanions.id })
+      .from(standCompanions)
+      .innerJoin(reservations, eq(standCompanions.reservationId, reservations.id))
+      .where(
+        and(
+          eq(standCompanions.exhibitorId, invitado.id),
+          inArray(reservations.status, ['pendiente', 'confirmada']),
+        ),
+      )
+      .limit(1);
+
+    if (compartida) return { ok: false, motivo: 'ya-comparte' } as const;
+
     const [{ total }] = await tx
       .select({ total: sql<number>`count(*)::int` })
       .from(standCompanions)
@@ -260,13 +322,12 @@ export async function agregarCompanero(
       .insert(standCompanions)
       .values({
         reservationId: params.reservationId,
-        displayName: params.displayName.trim(),
-        instagram: params.instagram,
-        contacto: params.contacto,
+        exhibitorId: invitado.id,
+        displayName: invitado.displayName,
       })
       .returning({ id: standCompanions.id });
 
-    return { ok: true, companionId: companero.id } as const;
+    return { ok: true, companionId: companero.id, displayName: invitado.displayName } as const;
   });
 }
 
@@ -295,9 +356,11 @@ export async function companerosDe(db: YucaDb, reservationId: string) {
     .select({
       id: standCompanions.id,
       displayName: standCompanions.displayName,
-      instagram: standCompanions.instagram,
+      slug: exhibitors.slug,
+      instagram: exhibitors.instagram,
     })
     .from(standCompanions)
+    .innerJoin(exhibitors, eq(standCompanions.exhibitorId, exhibitors.id))
     .where(eq(standCompanions.reservationId, reservationId));
 }
 
@@ -375,13 +438,18 @@ export async function reservaActivaDe(db: YucaDb, exhibitorId: string) {
       amountBob: reservations.amountBob,
       proofReference: reservations.proofReference,
       expiresAt: reservations.expiresAt,
+      confirmedAt: reservations.confirmedAt,
       standCode: stands.code,
       standNumero: stands.numero,
       standKind: stands.kind,
       maxCompaneros: stands.maxCompaneros,
+      // La sala hace falta en la pantalla de confirmación: el número de mesa
+      // solo no sirve para encontrarla si el evento reparte dos salones.
+      espacioNombre: espacios.name,
     })
     .from(reservations)
     .innerJoin(stands, eq(reservations.standId, stands.id))
+    .innerJoin(espacios, eq(stands.espacioId, espacios.id))
     .where(
       and(
         eq(reservations.exhibitorId, exhibitorId),

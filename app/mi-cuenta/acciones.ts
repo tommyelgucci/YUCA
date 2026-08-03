@@ -332,28 +332,36 @@ export async function agregarCompaneroAction(formData: FormData): Promise<Result
   if (!perfil) return { ok: false, mensaje: 'No tienes perfil de expositor.' };
 
   const reservationId = String(formData.get('reservationId') ?? '');
-  const displayName = String(formData.get('displayName') ?? '').trim();
-  const instagram = String(formData.get('instagram') ?? '').trim();
-  const contacto = String(formData.get('contacto') ?? '').trim();
+  // Se acepta pegado el enlace del perfil, que es lo que la gente tiene a mano:
+  // de "proyectoyuca.bo/artistas/lunaria" nos quedamos con "lunaria".
+  const slug = String(formData.get('slug') ?? '')
+    .trim()
+    .replace(/\/+$/, '')
+    .split('/')
+    .pop()!;
 
-  if (!displayName) return { ok: false, mensaje: 'Escribe el nombre de tu acompañante.' };
+  if (!slug) return { ok: false, mensaje: 'Escribe el usuario de tu acompañante.' };
 
   const resultado = await agregarCompanero(db, {
     reservationId,
     exhibitorId: perfil.id,
-    displayName,
-    instagram: instagram || undefined,
-    contacto: contacto || undefined,
+    slug,
   });
 
   revalidatePath('/mi-cuenta');
 
-  if (resultado.ok) return { ok: true, mensaje: 'Acompañante sumado.' };
+  if (resultado.ok) return { ok: true, mensaje: `${resultado.displayName} ya comparte tu mesa.` };
 
   const mensajes: Record<typeof resultado.motivo, string> = {
     'reserva-inactiva': 'Tu reserva ya no está activa.',
     'sin-cupo': 'Esa mesa ya no tiene cupo para más acompañantes.',
     'no-es-tuya': 'Esa reserva no es tuya.',
+    'no-existe': `No encontramos a nadie con el usuario "${slug}". Pídele el enlace de su perfil.`,
+    'sin-verificar':
+      'Esa persona todavía no está verificada por el equipo. En cuanto lo esté, podrás sumarla.',
+    'eres-tu': 'Ese eres tú: el acompañante es la otra persona.',
+    'tiene-mesa': 'Esa persona ya tiene su propia mesa en esta edición.',
+    'ya-comparte': 'Esa persona ya está compartiendo otra mesa.',
   };
   return { ok: false, mensaje: mensajes[resultado.motivo] };
 }

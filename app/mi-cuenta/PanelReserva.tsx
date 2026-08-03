@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { CheckCircle2, Clock3, MapPin, UserPlus, X } from 'lucide-react';
+import { Clock3, UserPlus, X } from 'lucide-react';
 import { ZONAS } from '@/lib/data/feria';
+import MesaConfirmada from './MesaConfirmada';
 import { bs } from '@/lib/utils';
 import type { StandKind } from '@/lib/types';
 import {
@@ -22,11 +23,13 @@ export interface ReservaActiva {
   standNumero: number;
   standKind: StandKind;
   maxCompaneros: number;
+  espacioNombre: string;
 }
 
 export interface Companero {
   id: string;
   displayName: string;
+  slug: string;
   instagram: string | null;
 }
 
@@ -44,10 +47,12 @@ export default function PanelReserva({
   reserva,
   companeros,
   slug,
+  nombre,
 }: {
   reserva: ReservaActiva;
   companeros: Companero[];
   slug: string;
+  nombre: string;
 }) {
   const [pendiente, startTransition] = useTransition();
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -87,40 +92,27 @@ export default function PanelReserva({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="card p-6 sm:p-8">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="pill bg-yuca-green-deep text-white">
-            {ZONAS[reserva.standKind].label} {reserva.standNumero}
-          </span>
-          <span className="pill bg-yuca-cream text-yuca-ink-soft">{bs(reserva.amountBob)}</span>
-          {!confirmada && (
+      {confirmada ? (
+        <MesaConfirmada
+          standNumero={reserva.standNumero}
+          standKind={reserva.standKind}
+          espacioNombre={reserva.espacioNombre}
+          slug={slug}
+          nombre={nombre}
+        />
+      ) : (
+        <div className="card p-6 sm:p-8">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="pill bg-yuca-green-deep text-white">
+              {ZONAS[reserva.standKind].label} {reserva.standNumero}
+            </span>
+            <span className="pill bg-yuca-cream text-yuca-ink-soft">{bs(reserva.amountBob)}</span>
             <span className="flex items-center gap-1 text-xs font-bold text-yuca-ink-soft">
               <Clock3 size={13} aria-hidden="true" />
               {tiempoRestante(reserva.expiresAt)}
             </span>
-          )}
-        </div>
-
-        {confirmada ? (
-          <div className="flex items-start gap-3">
-            <CheckCircle2 size={22} className="mt-0.5 shrink-0 text-yuca-green" aria-hidden="true" />
-            <div>
-              <p className="font-display text-lg text-yuca-green-deep">Mesa confirmada</p>
-              <p className="text-sm text-yuca-ink-soft">
-                El staff validó tu transferencia. Ya apareces en la lista de participantes con tu
-                mesa asignada.
-              </p>
-              <a
-                href={`/artistas/${slug}`}
-                className="btn-ghost btn-sm mt-3 inline-flex"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Ver tu perfil público
-              </a>
-            </div>
           </div>
-        ) : (
+
           <div className="flex flex-col gap-4">
             <p className="text-sm leading-relaxed text-yuca-ink-soft">
               Transfiere por QR y declara aquí la referencia. El staff confirma comparando con su
@@ -170,8 +162,8 @@ export default function PanelReserva({
               Cancelar y liberar la mesa
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="card p-6 sm:p-8">
         <div className="mb-3 flex items-center justify-between">
@@ -198,9 +190,10 @@ export default function PanelReserva({
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-yuca-ink">{companero.displayName}</p>
-                  {companero.instagram && (
-                    <p className="truncate text-xs text-yuca-ink-soft">{companero.instagram}</p>
-                  )}
+                  <p className="truncate text-xs text-yuca-ink-soft">
+                    /{companero.slug}
+                    {companero.instagram && ` · ${companero.instagram}`}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -219,8 +212,20 @@ export default function PanelReserva({
         {mostrarCompanero && (
           <form action={sumarCompanero} className="flex flex-col gap-2 border-t border-yuca-green/10 pt-3">
             <input type="hidden" name="reservationId" value={reserva.id} />
-            <input name="displayName" required placeholder="Nombre" className="field" />
-            <input name="instagram" placeholder="Instagram (opcional)" className="field" />
+            <label htmlFor="slug" className="label">
+              Usuario o enlace de su perfil
+            </label>
+            <input
+              id="slug"
+              name="slug"
+              required
+              placeholder="lunaria — o pega el enlace de su perfil"
+              className="field"
+            />
+            <p className="text-xs leading-relaxed text-yuca-ink-soft">
+              Tiene que tener cuenta en Proyecto Yuca y estar verificado por el equipo. Es lo que
+              pidió la organización: quien esté detrás de una mesa tiene que ser identificable.
+            </p>
             <div className="flex gap-2">
               <button type="submit" disabled={pendiente} className="btn-secondary btn-sm">
                 Sumar

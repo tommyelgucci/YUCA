@@ -5,9 +5,19 @@ al final de una fase.
 
 ## Última actualización
 
-**2026-08-03** — aceptación de las reglas antes de reservar (ver sección
-propia). Con esto quedan tres huecos del pliego cerrados y los que faltan
-necesitan datos o decisiones de la organización. 44 pruebas en verde.
+**2026-08-03** — dos bloques: aceptación de las reglas antes de reservar, y el
+acompañante como expositor verificado. Con eso quedan **cuatro** huecos del
+pliego cerrados; los que faltan (QR de pago, instrucciones de ingreso,
+colaboradores) necesitan datos de la organización. 50 pruebas en verde.
+
+Se creó el proyecto de Supabase (`yuca`, São Paulo, Data API apagada) pero
+**las migraciones siguen sin aplicarse**: el intento se hizo desde el teléfono
+y se topó con dos cosas ya arregladas en el repo —drizzle-kit no leía
+`.env.local`, y hacía falta separar la conexión de migrar de la de la app—.
+Queda pendiente correr `npm run db:migrate` desde una computadora.
+
+Llegó además una **propuesta nueva y grande** (marketplace de vendedores);
+anotada más abajo, sin construir nada todavía.
 
 **2026-08-02** — segunda mitad de la Fase 2 en dos bloques: primero
 `/mi-cuenta` y la cola de verificación, después la edición de perfil y la
@@ -229,6 +239,274 @@ impone (edad, plazo, una mesa por expositor, compartir mesa) y de lo que dijo
 el audio. El reglamento oficial lo tiene que dar la organización; al
 reemplazarlo hay que subir la `version`.
 
+## Hecho (el acompañante es un expositor verificado — 2026-08-03)
+
+Cuarto punto del pliego. El audio pedía que quien comparta mesa sea "un usuario
+registrado y verificado de la plataforma"; hasta ahora `display_name` era texto
+libre y `exhibitor_id` existía sin que nadie lo usara.
+
+- **Migración `0004_hot_hulk.sql`**: `exhibitor_id` pasa a `not null`, y se van
+  `instagram` y `contacto` — esos datos ahora salen del perfil del acompañante,
+  y tenerlos copiados sólo servía para quedarse viejos.
+- Se suma **por el slug del perfil** (acepta el enlace pegado entero). Se
+  rechaza a quien no existe, no está verificado, es uno mismo, ya tiene mesa
+  propia, o ya comparte otra.
+- **La regla "nadie comparte dos mesas" cruza tablas** (acompañante ↔ estado de
+  la reserva), así que no se puede imponer con un índice único parcial como las
+  demás. Se resuelve bloqueando la fila del invitado (`for update`) dentro de la
+  transacción: dos titulares invitando a la vez a la misma persona se serializan
+  y sólo entra uno.
+- Una reserva cancelada **no** ata a su acompañante: la fila queda de historial,
+  pero esa persona puede compartir otra mesa. Hay prueba.
+- **De paso, la credencial del acompañante deja de salir a medias**: ahora lleva
+  sus categorías, sus redes y un QR a *su* perfil, no al de quien le invitó.
+- 6 pruebas nuevas (50 en total).
+
+### Efecto secundario que conviene tener presente
+
+Ahora **el acompañante depende de que el staff le verifique**. Si la cola de
+verificación se atrasa, bloquea a gente que ya pagó su mesa y sólo quiere sumar
+a quien la comparte. Merece la pena vigilarlo cuando haya expositores reales; si
+molesta, la salida no es quitar la regla sino agilizar la cola.
+
+## Hecho (pantalla de confirmación — 2026-08-03)
+
+Último hueco del pliego que no dependía de nadie. Al confirmarse el pago,
+`/mi-cuenta` deja de mostrar un cartel de "Mesa confirmada" y muestra
+`MesaConfirmada.tsx`: felicitación con el nombre, número de mesa en grande con
+su sala, fecha y sede, cómo se entra y qué llevar.
+
+- Es el único momento en que se tiene toda la atención de quien acaba de pagar,
+  así que ahí van las instrucciones de ingreso. Si no están, se preguntan por
+  Instagram de una en una.
+- `lib/data/ingreso.ts` guarda esas instrucciones. Los horarios están en `null`
+  porque dependen de la sede: **lo que no se sabe no se muestra**, en vez de
+  inventar una hora que después haya que desmentir. Qué llevar no depende de la
+  sede, así que ya se muestra.
+- `reservaActivaDe` ahora trae también la sala: el número de mesa solo no sirve
+  para encontrarla cuando el evento reparte dos salones. Hay prueba (23 en
+  reservas, 62 en total).
+
+## Propuesta nueva: marketplace de vendedores (2026-08-03)
+
+Llegaron cuatro audios con una idea distinta de todo lo anterior: una sección
+tipo *Pedidos Ya* dentro de Proyecto Yuca, donde cada vendedor tenga su catálogo
+y su stock, reciba pedidos, cobre por QR o efectivo, y chatee con el comprador
+para coordinar la entrega sin pasarle su WhatsApp. Se financia con una
+**membresía** del vendedor, no con comisión por venta.
+
+El detonante es que Glitter (otro festival) prohibió a terceros vender ciertos
+productos, y la idea es acoger a esos vendedores.
+
+**Todavía no se construyó nada.** Queda anotado con la lectura del caso:
+
+- **No es una función, es un segundo producto.** La feria es una herramienta de
+  evento, estacional; esto es una plataforma transaccional todo el año. Es más
+  grande que todo lo que hay hecho hasta hoy, junto.
+- **Cobrar membresía y no comisión es la decisión más acertada de la propuesta**,
+  y conviene defenderla: si la plataforma no toca el dinero, no hay que retener
+  fondos, ni devolver, ni responder por una venta que salió mal, ni cumplir con
+  lo que se le exige a quien intermedia pagos. Cambiar a comisión más adelante
+  no es "subir un porcentaje": es volverse otra cosa.
+- **El chat es la parte cara**, no el catálogo. Mensajería significa tiempo real,
+  notificaciones, moderación, denuncias y guardar conversaciones que pueden
+  acabar siendo prueba en una disputa. Un primer paso mucho más barato: pedidos
+  con notas y estados, y que el contacto se revele sólo al confirmarse el pedido.
+- **Obliga a resolver el almacenamiento de imágenes**, que se viene esquivando
+  (`avatar_url` vacío, comprobantes como `data:` URL). Un catálogo con fotos ya
+  no admite ese atajo: toca Supabase Storage o equivalente.
+- **Lo que ya está hecho sirve**: perfiles con verificación, el patrón de
+  estados de una reserva (que es casi el de un pedido) y el circuito de pago
+  manual con confirmación del staff, que es exactamente lo que haría falta para
+  cobrar la membresía.
+- **Riesgo de fondo**: construir esto *porque* Glitter cerró la puerta ata el
+  proyecto a una decisión ajena que puede revertirse el mes que viene. La razón
+  que aguanta es que los emprendedores bolivianos necesitan dónde vender todo el
+  año; si esa razón se sostiene sola, el proyecto tiene sentido aunque Glitter
+  cambie de idea mañana.
+
+### Segundo audio (mismo día): el modelo de cobro cambia
+
+Llegó un quinto audio que **contradice al anterior** en lo económico. Ya no es
+"membresía en vez de comisión", sino el modelo de Pedidos Ya entero:
+
+- una **tarifa de servicio al comprador** (2–3 Bs por pedido),
+- más un **porcentaje de cada venta**,
+- y las membresías pasan a ser **beneficios** (avances, cupones, descuentos) en
+  vez de ser la forma de financiar la plataforma.
+
+Se suma también un **sistema de reputación**: estrellas y comentarios por
+vendedor.
+
+**Lo que hay que entender de ese cambio:** cobrar un porcentaje obliga a que el
+dinero pase por la plataforma. No se puede quedar con el 5% de una transferencia
+que va directo del comprador al vendedor. Y en cuanto el dinero pasa por aquí,
+aparece todo lo demás: cobrar, retener, pagar a cada vendedor, devolver cuando
+algo sale mal, cuadrar cuentas, facturar la comisión y responder ante quien
+reclama. Eso ya no es una web, es una pasarela de pagos — con proveedor, con
+contrato y con obligaciones fiscales.
+
+Es exactamente la parte que el audio anterior evitaba sin querer, y por eso
+merece decidirse a propósito y no de pasada.
+
+**Los números, con supuestos explícitos.** Suponiendo 30 vendedores y 200
+pedidos al mes de 60 Bs de media —optimista para un primer año—:
+
+| Modelo                          | Ingreso mensual | Hay que manejar dinero |
+| ------------------------------- | --------------- | ---------------------- |
+| 2,5 Bs por pedido + 5% de venta | ≈ 1.100 Bs      | Sí                     |
+| Membresía de 40 Bs por vendedor | ≈ 1.200 Bs      | No                     |
+
+A la escala de Yuca los dos dan casi lo mismo, pero uno cuesta una pasarela de
+pagos y el otro no. La comisión sólo gana con volumen grande, que es justo lo
+que Pedidos Ya tiene y esto todavía no.
+
+**Pero la objeción del audio 2 es real**: cobrar una suscripción por adelantado
+a un artista es difícil, y la comisión es fácil de aceptar porque sale de dinero
+ya ganado. La salida honesta a esa tensión no es elegir hoy, sino **empezar sin
+cobrar nada**: es la manera más barata de averiguar si alguien lo usa. Con
+pedidos reales encima de la mesa, cobrar membresía deja de ser una promesa.
+
+### Conflicto de interés: el mismo que se le critica a Glitter
+
+En el audio aparece, de pasada, que la organización también quiere vender lo
+suyo ahí ("yo hago llaveros de acrílico"). Eso es **exactamente** lo que se le
+reprocha a Glitter en el primer audio: ser dueño de la plaza y competir dentro
+de ella.
+
+No es un problema por sí solo —mucha feria vende su propio merch— pero se
+vuelve uno en cuanto haya que decidir quién sale primero en el listado, quién
+entra a una categoría o a quién se le aprueba una tienda. Si va a pasar, más
+vale que las reglas sean las mismas para todos y estén escritas antes de que
+haya un conflicto, no después. Es de las pocas cosas que salen gratis hoy y muy
+caras dentro de un año.
+
+### Lo barato y valioso: la reputación
+
+Estrellas y comentarios es, con diferencia, la parte con mejor relación entre lo
+que cuesta y lo que aporta. Lo que de verdad vende la plataforma es la confianza
+—saber que quien te va a mandar el llavero cumple— y eso no lo da ni el catálogo
+ni el chat. Además encaja con lo que ya existe: la verificación del staff.
+
+### Tercer audio: niveles de suscripción (Semilla / Brote / Planta / Flor)
+
+La propuesta se concreta en dos suscripciones: los **vendedores** pagan una
+mensual tras verificarse, y los **compradores** tienen tres niveles temáticos de
+10, 20–25 y 30 Bs. Se pidió cobrar al menos 25 Bs.
+
+**Los nombres son buenos** —encajan con la identidad de fauna y flora y se
+entienden solos—. Lo que hay que revisar es a quién se le cobra y cada cuánto.
+
+**1. Cobrarle al comprador por entrar es lo único que puede matar esto.** En el
+esquema, el nivel Semilla incluye "catálogo completo y compras": eso es un peaje
+para mirar. El problema de cualquier marketplace nuevo no es que sobren
+vendedores, es que faltan compradores, y aquí la competencia es Instagram, que
+es gratis y donde esa gente ya está. Un comprador que compra dos llaveros al año
+no paga 120 Bs anuales por el derecho a comprarlos. Y sin compradores, el
+vendedor tampoco tiene por qué pagar.
+
+Comprar y mirar, gratis siempre. La intuición de fondo —que hay fans que
+quieren apoyar a Yuca y recibir algo a cambio— sí sirve, pero como **club de
+apoyo opcional**: adelantos de la feria, insignia en el perfil, algo físico en
+el evento. Nunca como puerta.
+
+**2. Cobrar 10 Bs al mes a mano cuesta más de lo que recauda.** No hay cobro
+recurrente con tarjeta al alcance aquí: sería un QR por persona y por mes, y
+alguien del equipo cuadrando decenas de pagos chicos. Cincuenta personas a 10 Bs
+son 500 Bs al mes y varias horas de trabajo administrativo. Si se cobra, que sea
+**anual o por ciclo de feria**, y a pocos.
+
+**3. Los 25 Bs del vendedor están bien como precio.** Regla razonable: la cuota
+debería rondar la décima parte de lo que la plataforma le hace ganar. 25 Bs al
+mes se sostiene si le genera unas 250 Bs mensuales en ventas que no habría
+tenido — para quien vende llaveros de 25–40 Bs, son siete u ocho ventas extra.
+Creíble cuando haya tráfico; imposible de justificar el primer día.
+
+**3 bis. Los números de costo están en [`COSTOS.md`](COSTOS.md).** Resumen: con
+la feria sola y sin cobrar, 0 USD al mes; con el marketplace cobrando, 45 USD
+(≈ 315 Bs) porque Vercel obliga a plan de pago en cuanto hay uso comercial y
+Supabase gratis pausa el proyecto tras una semana sin actividad. **Trece
+vendedores a 25 Bs cubren todo.** Los 25 Bs funcionan.
+
+**4. Por eso: gratis hasta la primera venta hecha por la plataforma.** Resuelve
+de una vez el "no sabemos cuánto cobrar", es fácil de explicar, y convierte la
+cuota en consecuencia de un resultado en vez de en una apuesta. Los vendedores
+que vienen de Glitter acaban de perder un canal: pedirles que paguen por entrar
+a un sitio todavía vacío es el peor momento posible.
+
+**5. Tres niveles son mucho para empezar.** Cada nivel es trabajo perpetuo:
+decidir qué cupón toca a quién y hacerlo cumplir. Uno basta. Semilla, Brote y
+Planta encajan mejor como niveles del **vendedor** —o como reconocimiento por
+antigüedad y reputación— que como tarifas del comprador.
+
+## Hecho (base de la tienda — 2026-08-03)
+
+Construida la primera etapa, la que no depende de ninguna decisión de cobro:
+
+- **Migración `0005`**: `productos`, `producto_fotos`, `resenas` y
+  `exhibitors.tienda_abierta`.
+- **La tienda no es una tabla**: es el perfil de expositor que ya existe con
+  productos colgando. Crear `tiendas(exhibitor_id, nombre, bio…)` habría sido
+  copiar el perfil para no añadir nada.
+- **Vender exige perfil verificado y tienda abierta**, las dos cosas. Abrir
+  tienda es opt-in: no todo expositor de feria quiere catálogo todo el año.
+  Si el staff retira la verificación, el catálogo desaparece de la web sin
+  tocar producto por producto. Hay prueba.
+- **La reseña es del vendedor, no del producto** (con catálogos de diez cosas,
+  repartirlas por producto hace que ninguna signifique nada) y **va firmada**:
+  no se ofrece anónima. Mientras no haya pedidos no se puede comprobar que
+  quien opina compró; que se vea quién lo dice es lo que sostiene la confianza
+  mientras tanto. Una por persona y vendedor, impuesta por índice único, y las
+  estrellas de 1 a 5 con un `check` en la base.
+- Sin reseñas el promedio es `null`, no `0`: "nadie opinó todavía" y "todos le
+  pusieron cero" no son lo mismo.
+- **`lib/tienda.ts` no toca dinero.** Catálogo y reputación funcionan igual con
+  o sin pagos, y dejarlo así permite decidir el cobro más tarde sin bloquear
+  nada.
+- 11 pruebas nuevas (61 en total).
+
+**Falta**: la interfaz (panel del vendedor y páginas públicas de tienda) y las
+fotos, que siguen bloqueadas por la decisión de almacenamiento — `producto_fotos`
+existe pero nadie escribe todavía en ella. El truco del comprobante (`data:` URL
+en la fila) no vale aquí: son muchas imágenes y grandes.
+
+### Lo que hay que decidir antes de escribir una línea
+
+1. **¿El dinero pasa por la plataforma o no?** Es la decisión que parte el
+   proyecto en dos y de la que cuelgan todas las demás. Con comisión: sí, y hay
+   que buscar pasarela. Sin comisión: no, y el catálogo se puede empezar ya.
+2. ¿La feria de noviembre sale primero, sí o no? Hoy la base ni siquiera está
+   migrada y las páginas públicas leen mocks. Los vendedores del marketplace
+   saldrían justamente de los expositores de la feria.
+3. ¿Cuánto cuesta la membresía y qué pasa si alguien deja de pagarla — se le
+   oculta el catálogo o se le borra?
+4. ¿Qué responde Proyecto Yuca si un pedido no llega? (Aunque no toque el
+   dinero, va a recibir el reclamo igual.)
+5. ¿Entrega sólo en persona y coordinada, o hay envíos?
+6. Si la organización vende ahí dentro, ¿bajo qué reglas — las mismas que
+   todos, y quién lo arbitra?
+
+### El plan acordado está en `PLAN.md`
+
+Se pidió planificar el camino completo priorizando rentabilidad y accesibilidad;
+el resultado vive en [`PLAN.md`](PLAN.md). Resumen: la feria primero (agosto),
+tienda como vitrina gratuita antes de noviembre, pedidos sin dinero después de
+la feria, y cobrar recién en 2027 con datos delante. La plataforma no toca el
+dinero en ninguna etapa.
+
+### Por dónde empezaría, si se decide hacerlo
+
+Tres etapas, cada una útil por sí sola aunque la siguiente no llegue nunca:
+
+1. **Catálogo con reputación, sin pagos.** Tienda por vendedor, productos con
+   foto y precio, estrellas y comentarios. El contacto se revela al confirmarse
+   el pedido, que resuelve lo del WhatsApp sin construir un chat. Gratis para
+   todos. Sirve para averiguar si esto le interesa a alguien.
+2. **Pedidos con estados**, reusando el patrón de las reservas —que ya está
+   probado— y el cobro manual por QR que ya existe.
+3. **Cobro**, y sólo aquí se decide comisión o membresía, con datos reales
+   delante en vez de con suposiciones.
+
 ## Requisitos del audio de la organización (2026-07-31)
 
 Transcritos y pasados a texto por quien lleva el proyecto. Es la primera vez
@@ -248,17 +526,19 @@ yo hubiera supuesto. Marcado contra lo que ya existe:
 - ✅ **Aceptación de términos, condiciones y reglas antes de reservar** — hecho
   el 2026-08-03, ver sección propia. Falta el texto oficial de la organización.
 - Mapa por bloques con libre / reservado / ocupado ✅.
-- Compartir mesa ✅, pero con un matiz pendiente: el audio pide que el
-  compañero sea **un usuario registrado y verificado** de la plataforma, y hoy
-  `stand_companions.display_name` es texto libre (la columna `exhibitor_id`
-  existe pero la interfaz no la usa).
-- ❌ Instrucciones de ingreso (horarios, cómo entrar) en la confirmación.
+- ✅ **Compartir mesa con un usuario registrado y verificado** — hecho el
+  2026-08-03, ver sección propia.
+- ⚠️ **Instrucciones de ingreso** — la pantalla ya las muestra
+  (`lib/data/ingreso.ts`), pero los horarios están en `null` porque dependen de
+  la sede. Lo que falta no se muestra en vez de inventarse; qué llevar sí se
+  muestra ya. Cuando haya sede, se rellena ese archivo y aparece solo.
 - Plazo de 2–3 días esperando el pago ✅ (`reservationTtlMinutes`, hoy 48 h).
 - ⚠️ **Pago por QR: falta el QR.** Hoy la persona declara la referencia de su
   transferencia, pero la plataforma no le muestra ningún código QR para pagar.
   Falta saber si el QR es fijo de la organización o uno por reserva.
-- Pantalla final de confirmación ✅ parcial (el panel dice "Mesa confirmada",
-  pero no es la pantalla de "¡Felicidades!" que describe el audio).
+- ✅ **Pantalla de "¡Felicidades!"** — hecha el 2026-08-03
+  (`app/mi-cuenta/MesaConfirmada.tsx`): número de mesa grande, sala, fecha y
+  sede, instrucciones de ingreso y qué llevar.
 
 **Exportación**
 - Excel con todos los datos ✅ y alimentar variables de Illustrator para
