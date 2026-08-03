@@ -178,15 +178,22 @@ async function filasDesdeBase(db: NonNullable<ReturnType<typeof getDb>>): Promis
         inArray(reservations.status, ['pendiente', 'confirmada']),
     );
 
+  // El acompañante es un expositor registrado, así que su credencial sale
+  // igual de completa que la del titular: sus categorías, sus redes y un QR a
+  // su propio perfil, no al de quien le invitó.
   const ids = reservas.map((r) => r.reservationId);
   const acompanantes = ids.length
     ? await db
         .select({
           reservationId: standCompanions.reservationId,
           displayName: standCompanions.displayName,
-          instagram: standCompanions.instagram,
+          slug: exhibitors.slug,
+          categorias: exhibitors.categories,
+          instagram: exhibitors.instagram,
+          tiktok: exhibitors.tiktok,
         })
         .from(standCompanions)
+        .innerJoin(exhibitors, eq(standCompanions.exhibitorId, exhibitors.id))
         .where(inArray(standCompanions.reservationId, ids))
     : [];
 
@@ -226,11 +233,11 @@ async function filasDesdeBase(db: NonNullable<ReturnType<typeof getDb>>): Promis
           nombre_artistico: companero.displayName,
           nombre_real: '',
           rol: 'Compañero',
-          categorias: '',
+          categorias: (companero.categorias ?? []).join(', '),
           instagram: companero.instagram ?? '',
-          tiktok: '',
+          tiktok: companero.tiktok ?? '',
           foto_archivo: nombreFoto(`${reserva.standCode}-${i + 2}`),
-          qr_texto: `${sitio}/artistas/${reserva.slug}`,
+          qr_texto: `${sitio}/artistas/${companero.slug}`,
         });
       });
   }

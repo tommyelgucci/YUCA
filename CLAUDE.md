@@ -28,8 +28,8 @@ activarlos.
 `npm test`.** Cubre reserva feliz, doble reserva, carrera simultánea, doble
 mesa por expositor, confirmación, expiración, cancelación, mesas de
 organización, acompañantes, alta de perfil, choque de slug, verificación de
-staff, los tres tramos de edad, el permiso del tutor y la constancia de las
-reglas aceptadas.
+staff, los tres tramos de edad, el permiso del tutor, la constancia de las
+reglas aceptadas y las condiciones del acompañante de mesa.
 
 ## Convenciones de este repo
 

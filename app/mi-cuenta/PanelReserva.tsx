@@ -27,6 +27,7 @@ export interface ReservaActiva {
 export interface Companero {
   id: string;
   displayName: string;
+  slug: string;
   instagram: string | null;
 }
 
@@ -198,9 +199,10 @@ export default function PanelReserva({
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-yuca-ink">{companero.displayName}</p>
-                  {companero.instagram && (
-                    <p className="truncate text-xs text-yuca-ink-soft">{companero.instagram}</p>
-                  )}
+                  <p className="truncate text-xs text-yuca-ink-soft">
+                    /{companero.slug}
+                    {companero.instagram && ` · ${companero.instagram}`}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -219,8 +221,20 @@ export default function PanelReserva({
         {mostrarCompanero && (
           <form action={sumarCompanero} className="flex flex-col gap-2 border-t border-yuca-green/10 pt-3">
             <input type="hidden" name="reservationId" value={reserva.id} />
-            <input name="displayName" required placeholder="Nombre" className="field" />
-            <input name="instagram" placeholder="Instagram (opcional)" className="field" />
+            <label htmlFor="slug" className="label">
+              Usuario o enlace de su perfil
+            </label>
+            <input
+              id="slug"
+              name="slug"
+              required
+              placeholder="lunaria — o pega el enlace de su perfil"
+              className="field"
+            />
+            <p className="text-xs leading-relaxed text-yuca-ink-soft">
+              Tiene que tener cuenta en Proyecto Yuca y estar verificado por el equipo. Es lo que
+              pidió la organización: quien esté detrás de una mesa tiene que ser identificable.
+            </p>
             <div className="flex gap-2">
               <button type="submit" disabled={pendiente} className="btn-secondary btn-sm">
                 Sumar

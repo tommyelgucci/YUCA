@@ -5,9 +5,19 @@ al final de una fase.
 
 ## Última actualización
 
-**2026-08-03** — aceptación de las reglas antes de reservar (ver sección
-propia). Con esto quedan tres huecos del pliego cerrados y los que faltan
-necesitan datos o decisiones de la organización. 44 pruebas en verde.
+**2026-08-03** — dos bloques: aceptación de las reglas antes de reservar, y el
+acompañante como expositor verificado. Con eso quedan **cuatro** huecos del
+pliego cerrados; los que faltan (QR de pago, instrucciones de ingreso,
+colaboradores) necesitan datos de la organización. 50 pruebas en verde.
+
+Se creó el proyecto de Supabase (`yuca`, São Paulo, Data API apagada) pero
+**las migraciones siguen sin aplicarse**: el intento se hizo desde el teléfono
+y se topó con dos cosas ya arregladas en el repo —drizzle-kit no leía
+`.env.local`, y hacía falta separar la conexión de migrar de la de la app—.
+Queda pendiente correr `npm run db:migrate` desde una computadora.
+
+Llegó además una **propuesta nueva y grande** (marketplace de vendedores);
+anotada más abajo, sin construir nada todavía.
 
 **2026-08-02** — segunda mitad de la Fase 2 en dos bloques: primero
 `/mi-cuenta` y la cola de verificación, después la edición de perfil y la
@@ -229,6 +239,85 @@ impone (edad, plazo, una mesa por expositor, compartir mesa) y de lo que dijo
 el audio. El reglamento oficial lo tiene que dar la organización; al
 reemplazarlo hay que subir la `version`.
 
+## Hecho (el acompañante es un expositor verificado — 2026-08-03)
+
+Cuarto punto del pliego. El audio pedía que quien comparta mesa sea "un usuario
+registrado y verificado de la plataforma"; hasta ahora `display_name` era texto
+libre y `exhibitor_id` existía sin que nadie lo usara.
+
+- **Migración `0004_hot_hulk.sql`**: `exhibitor_id` pasa a `not null`, y se van
+  `instagram` y `contacto` — esos datos ahora salen del perfil del acompañante,
+  y tenerlos copiados sólo servía para quedarse viejos.
+- Se suma **por el slug del perfil** (acepta el enlace pegado entero). Se
+  rechaza a quien no existe, no está verificado, es uno mismo, ya tiene mesa
+  propia, o ya comparte otra.
+- **La regla "nadie comparte dos mesas" cruza tablas** (acompañante ↔ estado de
+  la reserva), así que no se puede imponer con un índice único parcial como las
+  demás. Se resuelve bloqueando la fila del invitado (`for update`) dentro de la
+  transacción: dos titulares invitando a la vez a la misma persona se serializan
+  y sólo entra uno.
+- Una reserva cancelada **no** ata a su acompañante: la fila queda de historial,
+  pero esa persona puede compartir otra mesa. Hay prueba.
+- **De paso, la credencial del acompañante deja de salir a medias**: ahora lleva
+  sus categorías, sus redes y un QR a *su* perfil, no al de quien le invitó.
+- 6 pruebas nuevas (50 en total).
+
+### Efecto secundario que conviene tener presente
+
+Ahora **el acompañante depende de que el staff le verifique**. Si la cola de
+verificación se atrasa, bloquea a gente que ya pagó su mesa y sólo quiere sumar
+a quien la comparte. Merece la pena vigilarlo cuando haya expositores reales; si
+molesta, la salida no es quitar la regla sino agilizar la cola.
+
+## Propuesta nueva: marketplace de vendedores (2026-08-03)
+
+Llegaron cuatro audios con una idea distinta de todo lo anterior: una sección
+tipo *Pedidos Ya* dentro de Proyecto Yuca, donde cada vendedor tenga su catálogo
+y su stock, reciba pedidos, cobre por QR o efectivo, y chatee con el comprador
+para coordinar la entrega sin pasarle su WhatsApp. Se financia con una
+**membresía** del vendedor, no con comisión por venta.
+
+El detonante es que Glitter (otro festival) prohibió a terceros vender ciertos
+productos, y la idea es acoger a esos vendedores.
+
+**Todavía no se construyó nada.** Queda anotado con la lectura del caso:
+
+- **No es una función, es un segundo producto.** La feria es una herramienta de
+  evento, estacional; esto es una plataforma transaccional todo el año. Es más
+  grande que todo lo que hay hecho hasta hoy, junto.
+- **Cobrar membresía y no comisión es la decisión más acertada de la propuesta**,
+  y conviene defenderla: si la plataforma no toca el dinero, no hay que retener
+  fondos, ni devolver, ni responder por una venta que salió mal, ni cumplir con
+  lo que se le exige a quien intermedia pagos. Cambiar a comisión más adelante
+  no es "subir un porcentaje": es volverse otra cosa.
+- **El chat es la parte cara**, no el catálogo. Mensajería significa tiempo real,
+  notificaciones, moderación, denuncias y guardar conversaciones que pueden
+  acabar siendo prueba en una disputa. Un primer paso mucho más barato: pedidos
+  con notas y estados, y que el contacto se revele sólo al confirmarse el pedido.
+- **Obliga a resolver el almacenamiento de imágenes**, que se viene esquivando
+  (`avatar_url` vacío, comprobantes como `data:` URL). Un catálogo con fotos ya
+  no admite ese atajo: toca Supabase Storage o equivalente.
+- **Lo que ya está hecho sirve**: perfiles con verificación, el patrón de
+  estados de una reserva (que es casi el de un pedido) y el circuito de pago
+  manual con confirmación del staff, que es exactamente lo que haría falta para
+  cobrar la membresía.
+- **Riesgo de fondo**: construir esto *porque* Glitter cerró la puerta ata el
+  proyecto a una decisión ajena que puede revertirse el mes que viene. La razón
+  que aguanta es que los emprendedores bolivianos necesitan dónde vender todo el
+  año; si esa razón se sostiene sola, el proyecto tiene sentido aunque Glitter
+  cambie de idea mañana.
+
+### Lo que hay que decidir antes de escribir una línea
+
+1. ¿La feria de noviembre sale primero, sí o no? Hoy la base ni siquiera está
+   migrada y las páginas públicas leen mocks. Los vendedores del marketplace
+   saldrían justamente de los expositores de la feria.
+2. ¿Cuánto cuesta la membresía y qué pasa si alguien deja de pagarla — se le
+   oculta el catálogo o se le borra?
+3. ¿Qué responde Proyecto Yuca si un pedido no llega? (Aunque no toque el
+   dinero, va a recibir el reclamo igual.)
+4. ¿Entrega sólo en persona y coordinada, o hay envíos?
+
 ## Requisitos del audio de la organización (2026-07-31)
 
 Transcritos y pasados a texto por quien lleva el proyecto. Es la primera vez
@@ -248,10 +337,8 @@ yo hubiera supuesto. Marcado contra lo que ya existe:
 - ✅ **Aceptación de términos, condiciones y reglas antes de reservar** — hecho
   el 2026-08-03, ver sección propia. Falta el texto oficial de la organización.
 - Mapa por bloques con libre / reservado / ocupado ✅.
-- Compartir mesa ✅, pero con un matiz pendiente: el audio pide que el
-  compañero sea **un usuario registrado y verificado** de la plataforma, y hoy
-  `stand_companions.display_name` es texto libre (la columna `exhibitor_id`
-  existe pero la interfaz no la usa).
+- ✅ **Compartir mesa con un usuario registrado y verificado** — hecho el
+  2026-08-03, ver sección propia.
 - ❌ Instrucciones de ingreso (horarios, cómo entrar) en la confirmación.
 - Plazo de 2–3 días esperando el pago ✅ (`reservationTtlMinutes`, hoy 48 h).
 - ⚠️ **Pago por QR: falta el QR.** Hoy la persona declara la referencia de su

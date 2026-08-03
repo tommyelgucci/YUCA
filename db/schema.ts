@@ -280,6 +280,12 @@ export const reservations = pgTable(
  * —queda como historial— así que los acompañantes siguen colgando de ella;
  * lo que importa es que la reserva siguiente sobre esa misma mesa nace sin
  * ninguno, que es la garantía que hace falta.
+ *
+ * **El acompañante es siempre un expositor registrado** (`exhibitor_id` es
+ * `not null`), porque así lo pidió la organización: quien esté detrás de una
+ * mesa tiene que ser alguien identificable, no un nombre escrito a mano. De ahí
+ * salen su nombre, sus redes y sus categorías, y por eso no se copian aquí:
+ * un duplicado sólo serviría para quedarse viejo.
  */
 export const standCompanions = pgTable(
   'stand_companions',
@@ -288,14 +294,23 @@ export const standCompanions = pgTable(
     reservationId: uuid('reservation_id')
       .notNull()
       .references(() => reservations.id, { onDelete: 'cascade' }),
+    exhibitorId: uuid('exhibitor_id')
+      .notNull()
+      .references(() => exhibitors.id, { onDelete: 'cascade' }),
+    /**
+     * Nombre tal como estaba al sumarlo.
+     *
+     * Se guarda aunque el perfil ya lo tenga: es lo que se imprimió en su
+     * credencial. Si después se renombra, el gafete que lleva puesto sigue
+     * diciendo lo de antes, y el equipo necesita poder cotejarlo.
+     */
     displayName: text('display_name').notNull(),
-    /** Perfil de expositor del acompañante, si también tiene cuenta. */
-    exhibitorId: uuid('exhibitor_id').references(() => exhibitors.id, { onDelete: 'set null' }),
-    instagram: text('instagram'),
-    contacto: text('contacto'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('stand_companions_reservation_idx').on(table.reservationId)],
+  (table) => [
+    index('stand_companions_reservation_idx').on(table.reservationId),
+    index('stand_companions_exhibitor_idx').on(table.exhibitorId),
+  ],
 );
 
 /* -------------------------------------------------------------------------- */

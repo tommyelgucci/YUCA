@@ -288,6 +288,24 @@ reglamentos. `/admin` muestra en cada fila de la cola qué versión aceptó.
 la plataforma ya impone y de lo que dijo el audio, pero el reglamento oficial
 lo tiene que dar la organización.
 
+### Compartir mesa
+
+El acompañante es **siempre un expositor registrado y verificado**
+(`stand_companions.exhibitor_id` es `not null`), como pidió la organización: se
+suma por el slug de su perfil, no escribiendo un nombre. De ahí salen su nombre,
+sus redes y sus categorías, así que su credencial ya no sale a medias y su QR
+apunta a su propio perfil.
+
+Se rechaza a quien no existe, no está verificado, es uno mismo, ya tiene mesa
+propia o ya comparte otra. Esa última regla **cruza dos tablas** —el acompañante
+y el estado de la reserva— así que no se puede imponer con un índice único
+parcial como las demás; se resuelve bloqueando la fila del invitado (`for
+update`) dentro de la transacción, de modo que dos titulares invitando a la vez
+a la misma persona se serializan y sólo entra uno.
+
+Una reserva cancelada no ata a su acompañante: la fila queda como historial,
+pero esa persona puede compartir otra mesa.
+
 La captura del comprobante se guarda como `data:` URL en la propia fila de
 `reservations` (columna `proof_url`, ya existía en el esquema) en vez de contra
 un bucket de almacenamiento: evita depender de credenciales externas para algo
