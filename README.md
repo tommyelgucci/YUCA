@@ -117,9 +117,16 @@ Postgres con Drizzle. `db/schema.ts` produce las formas de `lib/types.ts`.
 
 ```bash
 npm run db:generate   # SQL a partir del esquema
-npm run db:migrate    # aplica migraciones (necesita DATABASE_URL)
+npm run db:migrate    # aplica migraciones (necesita DIRECT_URL)
 npm run db:seed       # siembra con los datos de lib/data/
 ```
+
+**Supabase da dos cadenas de conexión y no son intercambiables.** La app usa el
+pooler en modo transacción (puerto 6543), que es lo correcto para un servidor
+web: muchas conexiones cortas. Las migraciones necesitan la conexión de sesión
+o directa (puerto 5432), porque por el pooler cada sentencia puede caer en una
+conexión distinta y una migración son varias sentencias que tienen que
+compartir transacción. Por eso `drizzle.config.ts` prefiere `DIRECT_URL`.
 
 **La regla "una mesa, una reserva viva" la impone la base, no el código.** Un
 índice único parcial sobre `reservations(stand_id) WHERE status IN
