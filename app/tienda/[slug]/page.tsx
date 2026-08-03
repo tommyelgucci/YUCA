@@ -5,7 +5,7 @@ import { ArrowLeft, ImageOff } from 'lucide-react';
 import { getDb } from '@/db';
 import { getUsuarioId } from '@/lib/auth';
 import { perfilPorClerkId, perfilPublicoPorSlug } from '@/lib/perfiles';
-import { catalogoDe, reputacionDe, resenasDe } from '@/lib/tienda';
+import { catalogoDe, portadasDe, reputacionDe, resenasDe } from '@/lib/tienda';
 import { bs } from '@/lib/utils';
 import { Avatar, VerifiedBadge } from '@/components/ui/Badges';
 import ExpositorSocials from '@/components/evento/ExpositorSocials';
@@ -52,6 +52,8 @@ export default async function TiendaPage({ params }: { params: Promise<{ slug: s
   // un formulario que iba a fallar.
   const visitante = clerkUserId ? await perfilPorClerkId(db, clerkUserId) : null;
   const puedeOpinar = Boolean(clerkUserId) && visitante?.id !== vendedor.id;
+
+  const portadas = await portadasDe(db, productos.map((producto) => producto.id));
 
   return (
     <div className="container-yuca max-w-4xl py-10 sm:py-14">
@@ -120,16 +122,22 @@ export default async function TiendaPage({ params }: { params: Promise<{ slug: s
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {productos.map((producto) => (
               <li key={producto.id} className="card overflow-hidden">
-                {/*
-                  Marco de la foto. Hoy siempre sale el hueco: falta decidir
-                  dónde se guardan las imágenes (ver COSTOS.md y CHECKPOINT.md).
-                  Se deja el espacio dibujado para que el día que existan no
-                  haya que recolocar nada.
-                */}
-                <div className="flex aspect-square items-center justify-center bg-yuca-cream/50">
-                  <ImageOff size={26} className="text-yuca-cream-deep" aria-hidden="true" />
-                  <span className="sr-only">Este producto todavía no tiene foto</span>
-                </div>
+                {/* El hueco se dibuja igual cuando falta foto: sin él, las
+                    tarjetas de una misma fila quedarían a distinta altura. */}
+                {portadas.get(producto.id) ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- fotos subidas por vendedores
+                  <img
+                    src={portadas.get(producto.id)}
+                    alt={producto.nombre}
+                    loading="lazy"
+                    className="aspect-square w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex aspect-square items-center justify-center bg-yuca-cream/50">
+                    <ImageOff size={26} className="text-yuca-cream-deep" aria-hidden="true" />
+                    <span className="sr-only">Este producto todavía no tiene foto</span>
+                  </div>
+                )}
 
                 <div className="p-4">
                   <p className="font-display text-base leading-tight text-yuca-green-deep">

@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Eye, EyeOff, PackagePlus, Store, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, ImagePlus, PackagePlus, Store, Trash2, X } from 'lucide-react';
 import { bs } from '@/lib/utils';
 import {
   borrarProductoAction,
   cambiarEstadoProductoAction,
   cambiarTiendaAction,
   publicarProductoAction,
+  quitarFotoAction,
+  subirFotoAction,
 } from './acciones-tienda';
 
 export interface ProductoDelPanel {
@@ -16,6 +18,7 @@ export interface ProductoDelPanel {
   precioBob: number;
   stock: number | null;
   estado: 'borrador' | 'publicado' | 'agotado';
+  fotos: { id: string; url: string }[];
 }
 
 const ETIQUETA_ESTADO = {
@@ -37,11 +40,14 @@ export default function PanelTienda({
   verificado,
   slug,
   productos,
+  puedeSubirFotos,
 }: {
   abierta: boolean;
   verificado: boolean;
   slug: string;
   productos: ProductoDelPanel[];
+  /** Falso mientras no haya almacenamiento configurado; entonces no se ofrece. */
+  puedeSubirFotos: boolean;
 }) {
   const [pendiente, startTransition] = useTransition();
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -103,12 +109,29 @@ export default function PanelTienda({
                     key={producto.id}
                     className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-yuca-cream/40 px-3 py-2.5"
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-yuca-ink">{producto.nombre}</p>
-                      <p className="text-xs text-yuca-ink-soft">
-                        {bs(producto.precioBob)}
-                        {producto.stock === null ? ' · por encargo' : ` · ${producto.stock} en stock`}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      {producto.fotos[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- fotos subidas por vendedores
+                        <img
+                          src={producto.fotos[0].url}
+                          alt=""
+                          className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-yuca-cream text-yuca-ink-soft">
+                          <ImagePlus size={16} aria-hidden="true" />
+                        </span>
+                      )}
+
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-yuca-ink">{producto.nombre}</p>
+                        <p className="text-xs text-yuca-ink-soft">
+                          {bs(producto.precioBob)}
+                          {producto.stock === null
+                            ? ' · por encargo'
+                            : ` · ${producto.stock} en stock`}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-1.5">
@@ -149,6 +172,48 @@ export default function PanelTienda({
                         <Trash2 size={15} aria-hidden="true" />
                       </button>
                     </div>
+
+                    {puedeSubirFotos && (
+                      <div className="flex w-full flex-wrap items-center gap-2 border-t border-yuca-green/10 pt-2.5">
+                        {producto.fotos.map((foto) => (
+                          <span key={foto.id} className="relative">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- fotos subidas por vendedores */}
+                            <img
+                              src={foto.url}
+                              alt=""
+                              className="h-14 w-14 rounded-xl object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => correr(() => quitarFotoAction(foto.id))}
+                              disabled={pendiente}
+                              aria-label="Quitar esta foto"
+                              className="absolute -right-1.5 -top-1.5 rounded-full bg-yuca-coral p-1 text-white"
+                            >
+                              <X size={11} aria-hidden="true" />
+                            </button>
+                          </span>
+                        ))}
+
+                        <form
+                          action={(formData) => correr(() => subirFotoAction(formData))}
+                          className="contents"
+                        >
+                          <input type="hidden" name="productoId" value={producto.id} />
+                          <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-yuca-green/30 text-yuca-green-deep hover:bg-yuca-cream/60">
+                            <ImagePlus size={17} aria-hidden="true" />
+                            <span className="sr-only">Añadir foto a {producto.nombre}</span>
+                            <input
+                              type="file"
+                              name="foto"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+                            />
+                          </label>
+                        </form>
+                      </div>
+                    )}
                   </li>
                 );
               })}

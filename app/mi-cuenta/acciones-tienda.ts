@@ -6,10 +6,13 @@ import { getUsuarioId } from '@/lib/auth';
 import { perfilPorClerkId } from '@/lib/perfiles';
 import {
   actualizarProducto,
+  agregarFoto,
   borrarProducto,
   cambiarTienda,
   publicarProducto,
+  quitarFoto,
 } from '@/lib/tienda';
+import { borrarImagen, explicarSubida, subirImagen } from '@/lib/almacenamiento';
 import type { ResultadoAccion } from './acciones';
 
 /**
@@ -119,4 +122,61 @@ export async function borrarProductoAction(productoId: string): Promise<Resultad
   return hecho
     ? { ok: true, mensaje: 'Producto borrado.' }
     : { ok: false, mensaje: 'No se pudo borrar ese producto.' };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Fotos                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Sube una foto y la cuelga del producto.
+ *
+ * El orden importa: primero el archivo, después la fila. Si se hiciera al revés
+ * y la subida fallara, quedaría una foto apuntando a una URL que no existe —y
+ * eso se ve en el catálogo, mientras que un archivo huérfano no lo ve nadie.
+ */
+export async function subirFotoAction(formData: FormData): Promise<ResultadoAccion> {
+  const { db, perfil } = await perfilDeLaSesion();
+  if (!perfil) return { ok: false, mensaje: 'No tienes perfil de expositor.' };
+
+  const productoId = String(formData.get('productoId') ?? '');
+  const archivo = formData.get('foto');
+
+  if (!(archivo instanceof File) || archivo.size === 0) {
+    return { ok: false, mensaje: 'Elige una foto.' };
+  }
+
+  const subida = await subirImagen(archivo, { productoId });
+  if (!subida.ok) return { ok: false, mensaje: explicarSubida(subida) };
+
+  const colgada = await agregarFoto(db, {
+    productoId,
+    exhibitorId: perfil.id,
+    url: subida.url,
+    alt: String(formData.get('alt') ?? ''),
+  });
+
+  if (!colgada) {
+    // El producto no es suyo o ya no existe: el archivo recién subido sobra.
+    await borrarImagen(subida.ruta);
+    return { ok: false, mensaje: 'Ese producto no es tuyo.' };
+  }
+
+  refrescar(perfil.slug);
+  return { ok: true, mensaje: 'Foto subida.' };
+}
+
+export async function quitarFotoAction(fotoId: string): Promise<ResultadoAccion> {
+  const { db, perfil } = await perfilDeLaSesion();
+  if (!perfil) return { ok: false, mensaje: 'No tienes perfil de expositor.' };
+
+  const url = await quitarFoto(db, { fotoId, exhibitorId: perfil.id });
+  if (!url) return { ok: false, mensaje: 'No se pudo quitar esa foto.' };
+
+  // La ruta dentro del bucket es lo que va después de `/public/productos/`.
+  const ruta = url.split('/productos/').pop();
+  if (ruta) await borrarImagen(ruta);
+
+  refrescar(perfil.slug);
+  return { ok: true, mensaje: 'Foto quitada.' };
 }

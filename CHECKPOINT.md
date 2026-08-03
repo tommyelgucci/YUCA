@@ -67,11 +67,29 @@ La interfaz del catálogo, encima del motor que ya estaba probado.
   sostiene la confianza mientras no haya pedidos que verificar.
 - 2 pruebas nuevas (71 en total).
 
-**Lo que falta de esta etapa: las fotos.** `producto_fotos` existe y el marco de
-la imagen ya está dibujado en la ficha, pero nadie escribe todavía en esa tabla.
-Hace falta decidir el almacenamiento —lo natural es Supabase Storage, 1 GB
-gratis— y eso pide crear el bucket y sumar una clave al entorno. Es el siguiente
-bloque, y necesita las manos de la organización.
+**Fotos: código listo, falta encender el almacenamiento.** `lib/almacenamiento.ts`
+sube a Supabase Storage por la API REST con `fetch`, sin añadir `supabase-js`:
+el proyecto ya habla con Postgres por su cuenta y un SDK entero para dos
+llamadas HTTP sería pagar mucho por poco. Límite 3 MB, sólo JPG/PNG/WEBP.
+
+- Mientras falten `NEXT_PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`,
+  **la interfaz no ofrece subir**, igual que sin Clerk no ofrece cuentas.
+  Prometer una subida que va a fallar es peor que no ofrecerla.
+- Primero se sube el archivo y después se escribe la fila: al revés, un fallo
+  dejaría una foto apuntando a una URL inexistente, y eso se ve en el catálogo
+  mientras que un archivo huérfano no lo ve nadie. Si la fila se rechaza
+  —producto ajeno— se borra el archivo recién subido.
+- Borrar el producto se lleva sus fotos por la clave foránea, no por código.
+- 3 pruebas nuevas (74 en total): la portada es la primera foto subida, nadie
+  cuelga ni quita fotos en producto ajeno, y el borrado en cascada.
+
+⚠️ **Sin probar contra Supabase de verdad.** Desde el entorno de desarrollo de
+Claude las conexiones salientes a Supabase están bloqueadas, así que este código
+está escrito pero no ejercitado contra el servicio. Espera una o dos rondas de
+ajuste la primera vez que se suba una foto.
+
+**Falta de la organización**: crear el bucket `productos` (público) y poner las
+dos variables en `.env.local`.
 
 ### Pendiente inmediato
 

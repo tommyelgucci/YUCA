@@ -5,7 +5,8 @@ import { authEnabled, getNombreUsuario, getUsuarioId } from '@/lib/auth';
 import { perfilPorClerkId } from '@/lib/perfiles';
 import { puedeSerExpositor } from '@/lib/edad';
 import { companerosDe, reservaActivaDe, standsDisponibles } from '@/lib/reservas';
-import { productosDe } from '@/lib/tienda';
+import { fotosDeTodos, productosDe } from '@/lib/tienda';
+import { almacenamientoActivo } from '@/lib/almacenamiento';
 import { edicionActual } from '@/lib/data/edicion';
 import FormularioPerfil from './FormularioPerfil';
 import PerfilPublico from './PerfilPublico';
@@ -210,18 +211,21 @@ async function PanelDeLaTienda({
   db: NonNullable<ReturnType<typeof getDb>>;
 }) {
   const productos = await productosDe(db, perfilId);
+  const fotos = await fotosDeTodos(db, productos.map((producto) => producto.id));
 
   return (
     <PanelTienda
       abierta={abierta}
       verificado={verificado}
       slug={slug}
+      puedeSubirFotos={almacenamientoActivo}
       productos={productos.map((producto) => ({
         id: producto.id,
         nombre: producto.nombre,
         precioBob: producto.precioBob,
         stock: producto.stock,
         estado: producto.estado,
+        fotos: fotos.get(producto.id) ?? [],
       }))}
     />
   );
