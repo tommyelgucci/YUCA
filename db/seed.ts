@@ -129,6 +129,10 @@ async function seed() {
       amountBob:
         precioActual(standsMock.find((s) => s.id === expositor.standId)?.kind ?? 'ilustrador') ?? 0,
       proofReference: 'SEED',
+      // Datos de demostración: nadie aceptó nada, y decirlo es más útil que
+      // sembrar la versión vigente y confundirla con una aceptación real.
+      termsVersion: 'sin-reglamento',
+      termsAcceptedAt: new Date(),
       expiresAt: new Date(),
       confirmedBy: 'seed',
       confirmedAt: new Date(),

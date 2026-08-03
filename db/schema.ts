@@ -233,6 +233,19 @@ export const reservations = pgTable(
      */
     preventaId: text('preventa_id'),
     amountBob: integer('amount_bob').notNull(),
+    /*
+     * Reglas aceptadas para poder apartar la mesa (`lib/data/reglamento.ts`).
+     *
+     * Cuelgan de la reserva y no del expositor porque lo que se acepta es
+     * participar en *esta* edición con *este* texto: quien reserve el año que
+     * viene tendrá que volver a leer lo que rija entonces.
+     *
+     * Ambas son `not null` **sin default** a propósito: así no existe forma de
+     * insertar una reserva sin dejar constancia de qué versión se aceptó y
+     * cuándo, ni desde el código ni con un insert a mano.
+     */
+    termsVersion: text('terms_version').notNull(),
+    termsAcceptedAt: timestamp('terms_accepted_at', { withTimezone: true }).notNull(),
     /** Referencia de la transferencia que declara el expositor. */
     proofReference: text('proof_reference'),
     /** Captura del comprobante, cuando haya almacenamiento de archivos. */
