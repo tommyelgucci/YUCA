@@ -14,7 +14,7 @@ plataformas los cambian, y el dominio hay que cotizarlo.
 | **Supabase** | Base de datos y fotos           | Sí, con dos peros: se pausa tras una semana sin uso, y 1 GB de archivos | 25 USD/mes |
 | **Clerk**    | Cuentas e inicio de sesión      | Sí, hasta 10.000 usuarios activos al mes                   | 25 USD/mes           |
 | **Resend**   | Correos (avisos de pedido, etc.) | Sí, 3.000 correos al mes                                  | 20 USD/mes           |
-| **Dominio**  | `proyectoyuca.com`              | No                                                         | ~12 USD/año          |
+| **Dominio**  | `proyectoyuca.com`              | No                                                         | 22,99 USD/año        |
 
 ### El detalle que puede pasar desapercibido
 
@@ -55,9 +55,17 @@ Hasta lanzar la marca en serio, sirve el subdominio gratuito del hosting
 haya algo que anunciar. Coste hasta entonces: **cero**.
 
 El dominio oficial es **`proyectoyuca.com`**, no un `.bo`. Es una confusión fácil
-porque en redes el usuario es `@proyecto_yuca.bo`, pero son cosas distintas. Un
-`.com` ronda los **12 USD al año** (≈ 85 Bs, unos 7 Bs al mes) — bastante menos
-que un `.bo`, y sin pasar por NIC Bolivia.
+porque en redes el usuario es `@proyecto_yuca.bo`, pero son cosas distintas.
+
+Ya es de la organización, en GoDaddy. Renovación real: **22,99 USD/año**
+(≈ 160 Bs, unos 13 Bs al mes). No es el precio de promoción de un dominio
+nuevo, es el de renovación, que siempre es más alto.
+
+⚠️ **Había expirado el 7 de julio de 2026** y se rescató dentro del periodo de
+gracia. Se venció porque los avisos iban al correo de quien lo administraba
+antes y ya no está. Que la renovación automática esté activa y que el correo de
+la cuenta sea de la organización no es un detalle administrativo: perder el
+dominio es perder la marca, los enlaces compartidos y los QR ya impresos.
 
 ### 3. Cambiar Clerk por el login de Supabase no ahorra nada hoy
 
