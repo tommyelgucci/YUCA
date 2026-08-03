@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -82,6 +83,11 @@ export const exhibitors = pgTable(
     /** Categorías de arte; texto libre acotado en la interfaz. */
     categories: text('categories').array().notNull().default(sql`ARRAY[]::text[]`),
     verified: boolean('verified').notNull().default(false),
+    /**
+     * Si vende todo el año en la tienda, además de tener mesa en la feria.
+     * Se activa a propósito: no todo expositor quiere un catálogo abierto.
+     */
+    tiendaAbierta: boolean('tienda_abierta').notNull().default(false),
     avatarUrl: text('avatar_url'),
     bio: text('bio').notNull().default(''),
     instagram: text('instagram'),
@@ -314,6 +320,111 @@ export const standCompanions = pgTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* Tienda                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Catálogo de un vendedor.
+ *
+ * La tienda **no es una tabla**: es el perfil de expositor que ya existe, con
+ * productos colgando. Crear `tiendas(exhibitor_id, nombre, bio, …)` sería
+ * copiar el perfil entero para no añadir nada; lo único que hacía falta de
+ * verdad es saber si esa persona quiere vender todo el año o sólo tener mesa en
+ * la feria, y eso es `exhibitors.tienda_abierta`.
+ */
+export const productoEstado = pgEnum('producto_estado', ['borrador', 'publicado', 'agotado']);
+
+export const productos = pgTable(
+  'productos',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    exhibitorId: uuid('exhibitor_id')
+      .notNull()
+      .references(() => exhibitors.id, { onDelete: 'cascade' }),
+    /** Único dentro de la tienda, no de todo el sitio: `/tienda/lunaria/llavero-gato`. */
+    slug: text('slug').notNull(),
+    nombre: text('nombre').notNull(),
+    descripcion: text('descripcion').notNull().default(''),
+    /**
+     * Precio en bolivianos enteros. Sin centavos a propósito: nadie vende un
+     * llavero a 25,50 Bs, y los enteros evitan el redondeo de los flotantes.
+     */
+    precioBob: integer('precio_bob').notNull(),
+    /** `null` = se hace por encargo, no hay existencias que contar. */
+    stock: integer('stock'),
+    estado: productoEstado('estado').notNull().default('borrador'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('productos_tienda_slug_key').on(table.exhibitorId, table.slug),
+    index('productos_estado_idx').on(table.estado),
+  ],
+);
+
+/**
+ * Fotos de un producto.
+ *
+ * Tabla aparte porque son varias por producto y el orden importa: la primera es
+ * la que sale en el listado.
+ *
+ * ⚠️ `url` todavía no tiene quién la escriba: falta decidir dónde se guardan
+ * las imágenes (ver la nota de almacenamiento en CHECKPOINT). El truco del
+ * comprobante —guardar la imagen como `data:` URL en la propia fila— no sirve
+ * aquí: son muchas fotos y grandes, y engordarían cada consulta del catálogo.
+ */
+export const productoFotos = pgTable(
+  'producto_fotos',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    productoId: uuid('producto_id')
+      .notNull()
+      .references(() => productos.id, { onDelete: 'cascade' }),
+    url: text('url').notNull(),
+    alt: text('alt').notNull().default(''),
+    orden: integer('orden').notNull().default(0),
+  },
+  (table) => [index('producto_fotos_producto_idx').on(table.productoId)],
+);
+
+/**
+ * Reseña de un vendedor: estrellas y comentario.
+ *
+ * Es del **vendedor**, no del producto. Con catálogos de diez cosas, repartir
+ * las reseñas por producto sólo consigue que ninguna junte suficientes para
+ * significar algo.
+ *
+ * Mientras no existan pedidos no hay forma de comprobar que quien opina compró
+ * de verdad. Lo que sostiene la confianza hasta entonces es que **la reseña va
+ * firmada**: se guarda quién la escribió y se muestra con su nombre, nunca
+ * anónima. En una comunidad donde todos se conocen, eso pesa más que un sello
+ * de "compra verificada" que todavía no se puede emitir.
+ */
+export const resenas = pgTable(
+  'resenas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** El vendedor reseñado. */
+    exhibitorId: uuid('exhibitor_id')
+      .notNull()
+      .references(() => exhibitors.id, { onDelete: 'cascade' }),
+    /** Quién opina. Va firmada: la reseña anónima no se ofrece. */
+    autorClerkUserId: text('autor_clerk_user_id').notNull(),
+    autorNombre: text('autor_nombre').notNull(),
+    estrellas: integer('estrellas').notNull(),
+    comentario: text('comentario').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Una reseña por persona y vendedor: opinar diez veces no vale diez.
+    uniqueIndex('resenas_autor_vendedor_key').on(table.exhibitorId, table.autorClerkUserId),
+    // Las estrellas son de 1 a 5; que lo imponga la base y no sólo el formulario.
+    check('resenas_estrellas_rango', sql`${table.estrellas} between 1 and 5`),
+    index('resenas_exhibitor_idx').on(table.exhibitorId),
+  ],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Actividades                                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -383,6 +494,21 @@ export const standsRelations = relations(stands, ({ one, many }) => ({
 
 export const exhibitorsRelations = relations(exhibitors, ({ many }) => ({
   reservations: many(reservations),
+  productos: many(productos),
+  resenas: many(resenas),
+}));
+
+export const productosRelations = relations(productos, ({ one, many }) => ({
+  vendedor: one(exhibitors, { fields: [productos.exhibitorId], references: [exhibitors.id] }),
+  fotos: many(productoFotos),
+}));
+
+export const productoFotosRelations = relations(productoFotos, ({ one }) => ({
+  producto: one(productos, { fields: [productoFotos.productoId], references: [productos.id] }),
+}));
+
+export const resenasRelations = relations(resenas, ({ one }) => ({
+  vendedor: one(exhibitors, { fields: [resenas.exhibitorId], references: [exhibitors.id] }),
 }));
 
 export const reservationsRelations = relations(reservations, ({ one, many }) => ({

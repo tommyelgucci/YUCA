@@ -370,6 +370,82 @@ que cuesta y lo que aporta. Lo que de verdad vende la plataforma es la confianza
 —saber que quien te va a mandar el llavero cumple— y eso no lo da ni el catálogo
 ni el chat. Además encaja con lo que ya existe: la verificación del staff.
 
+### Tercer audio: niveles de suscripción (Semilla / Brote / Planta / Flor)
+
+La propuesta se concreta en dos suscripciones: los **vendedores** pagan una
+mensual tras verificarse, y los **compradores** tienen tres niveles temáticos de
+10, 20–25 y 30 Bs. Se pidió cobrar al menos 25 Bs.
+
+**Los nombres son buenos** —encajan con la identidad de fauna y flora y se
+entienden solos—. Lo que hay que revisar es a quién se le cobra y cada cuánto.
+
+**1. Cobrarle al comprador por entrar es lo único que puede matar esto.** En el
+esquema, el nivel Semilla incluye "catálogo completo y compras": eso es un peaje
+para mirar. El problema de cualquier marketplace nuevo no es que sobren
+vendedores, es que faltan compradores, y aquí la competencia es Instagram, que
+es gratis y donde esa gente ya está. Un comprador que compra dos llaveros al año
+no paga 120 Bs anuales por el derecho a comprarlos. Y sin compradores, el
+vendedor tampoco tiene por qué pagar.
+
+Comprar y mirar, gratis siempre. La intuición de fondo —que hay fans que
+quieren apoyar a Yuca y recibir algo a cambio— sí sirve, pero como **club de
+apoyo opcional**: adelantos de la feria, insignia en el perfil, algo físico en
+el evento. Nunca como puerta.
+
+**2. Cobrar 10 Bs al mes a mano cuesta más de lo que recauda.** No hay cobro
+recurrente con tarjeta al alcance aquí: sería un QR por persona y por mes, y
+alguien del equipo cuadrando decenas de pagos chicos. Cincuenta personas a 10 Bs
+son 500 Bs al mes y varias horas de trabajo administrativo. Si se cobra, que sea
+**anual o por ciclo de feria**, y a pocos.
+
+**3. Los 25 Bs del vendedor están bien como precio.** Regla razonable: la cuota
+debería rondar la décima parte de lo que la plataforma le hace ganar. 25 Bs al
+mes se sostiene si le genera unas 250 Bs mensuales en ventas que no habría
+tenido — para quien vende llaveros de 25–40 Bs, son siete u ocho ventas extra.
+Creíble cuando haya tráfico; imposible de justificar el primer día.
+
+**4. Por eso: gratis hasta la primera venta hecha por la plataforma.** Resuelve
+de una vez el "no sabemos cuánto cobrar", es fácil de explicar, y convierte la
+cuota en consecuencia de un resultado en vez de en una apuesta. Los vendedores
+que vienen de Glitter acaban de perder un canal: pedirles que paguen por entrar
+a un sitio todavía vacío es el peor momento posible.
+
+**5. Tres niveles son mucho para empezar.** Cada nivel es trabajo perpetuo:
+decidir qué cupón toca a quién y hacerlo cumplir. Uno basta. Semilla, Brote y
+Planta encajan mejor como niveles del **vendedor** —o como reconocimiento por
+antigüedad y reputación— que como tarifas del comprador.
+
+## Hecho (base de la tienda — 2026-08-03)
+
+Construida la primera etapa, la que no depende de ninguna decisión de cobro:
+
+- **Migración `0005`**: `productos`, `producto_fotos`, `resenas` y
+  `exhibitors.tienda_abierta`.
+- **La tienda no es una tabla**: es el perfil de expositor que ya existe con
+  productos colgando. Crear `tiendas(exhibitor_id, nombre, bio…)` habría sido
+  copiar el perfil para no añadir nada.
+- **Vender exige perfil verificado y tienda abierta**, las dos cosas. Abrir
+  tienda es opt-in: no todo expositor de feria quiere catálogo todo el año.
+  Si el staff retira la verificación, el catálogo desaparece de la web sin
+  tocar producto por producto. Hay prueba.
+- **La reseña es del vendedor, no del producto** (con catálogos de diez cosas,
+  repartirlas por producto hace que ninguna signifique nada) y **va firmada**:
+  no se ofrece anónima. Mientras no haya pedidos no se puede comprobar que
+  quien opina compró; que se vea quién lo dice es lo que sostiene la confianza
+  mientras tanto. Una por persona y vendedor, impuesta por índice único, y las
+  estrellas de 1 a 5 con un `check` en la base.
+- Sin reseñas el promedio es `null`, no `0`: "nadie opinó todavía" y "todos le
+  pusieron cero" no son lo mismo.
+- **`lib/tienda.ts` no toca dinero.** Catálogo y reputación funcionan igual con
+  o sin pagos, y dejarlo así permite decidir el cobro más tarde sin bloquear
+  nada.
+- 11 pruebas nuevas (61 en total).
+
+**Falta**: la interfaz (panel del vendedor y páginas públicas de tienda) y las
+fotos, que siguen bloqueadas por la decisión de almacenamiento — `producto_fotos`
+existe pero nadie escribe todavía en ella. El truco del comprobante (`data:` URL
+en la fila) no vale aquí: son muchas imágenes y grandes.
+
 ### Lo que hay que decidir antes de escribir una línea
 
 1. **¿El dinero pasa por la plataforma o no?** Es la decisión que parte el
