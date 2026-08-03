@@ -117,9 +117,15 @@ Postgres con Drizzle. `db/schema.ts` produce las formas de `lib/types.ts`.
 
 ```bash
 npm run db:generate   # SQL a partir del esquema
+npm run db:check      # diagnostica la conexión antes de migrar
 npm run db:migrate    # aplica migraciones (necesita DIRECT_URL)
 npm run db:seed       # siembra con los datos de lib/data/
 ```
+
+Si `db:migrate` falla, **corre `npm run db:check` primero**: drizzle-kit devuelve
+código 1 sin decir por qué, y ese comando sí dice si falta una variable, si quedó
+el texto de ejemplo sin reemplazar, si la contraseña no es la correcta o si el
+servidor no responde.
 
 **Supabase da dos cadenas de conexión y no son intercambiables.** La app usa el
 pooler en modo transacción (puerto 6543), que es lo correcto para un servidor

@@ -15,7 +15,8 @@ npm test             # edad + reservas + perfiles + tienda + credenciales (PGlit
 npm run lint
 
 npm run db:generate   # SQL desde db/schema.ts
-npm run db:migrate    # aplica migraciones (necesita DATABASE_URL)
+npm run db:check      # diagnostica la conexión: qué variables hay y qué tablas existen
+npm run db:migrate    # aplica migraciones (necesita DIRECT_URL)
 npm run db:seed       # siembra con lib/data/
 ```
 
