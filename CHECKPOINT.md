@@ -307,16 +307,97 @@ productos, y la idea es acoger a esos vendedores.
   año; si esa razón se sostiene sola, el proyecto tiene sentido aunque Glitter
   cambie de idea mañana.
 
+### Segundo audio (mismo día): el modelo de cobro cambia
+
+Llegó un quinto audio que **contradice al anterior** en lo económico. Ya no es
+"membresía en vez de comisión", sino el modelo de Pedidos Ya entero:
+
+- una **tarifa de servicio al comprador** (2–3 Bs por pedido),
+- más un **porcentaje de cada venta**,
+- y las membresías pasan a ser **beneficios** (avances, cupones, descuentos) en
+  vez de ser la forma de financiar la plataforma.
+
+Se suma también un **sistema de reputación**: estrellas y comentarios por
+vendedor.
+
+**Lo que hay que entender de ese cambio:** cobrar un porcentaje obliga a que el
+dinero pase por la plataforma. No se puede quedar con el 5% de una transferencia
+que va directo del comprador al vendedor. Y en cuanto el dinero pasa por aquí,
+aparece todo lo demás: cobrar, retener, pagar a cada vendedor, devolver cuando
+algo sale mal, cuadrar cuentas, facturar la comisión y responder ante quien
+reclama. Eso ya no es una web, es una pasarela de pagos — con proveedor, con
+contrato y con obligaciones fiscales.
+
+Es exactamente la parte que el audio anterior evitaba sin querer, y por eso
+merece decidirse a propósito y no de pasada.
+
+**Los números, con supuestos explícitos.** Suponiendo 30 vendedores y 200
+pedidos al mes de 60 Bs de media —optimista para un primer año—:
+
+| Modelo                          | Ingreso mensual | Hay que manejar dinero |
+| ------------------------------- | --------------- | ---------------------- |
+| 2,5 Bs por pedido + 5% de venta | ≈ 1.100 Bs      | Sí                     |
+| Membresía de 40 Bs por vendedor | ≈ 1.200 Bs      | No                     |
+
+A la escala de Yuca los dos dan casi lo mismo, pero uno cuesta una pasarela de
+pagos y el otro no. La comisión sólo gana con volumen grande, que es justo lo
+que Pedidos Ya tiene y esto todavía no.
+
+**Pero la objeción del audio 2 es real**: cobrar una suscripción por adelantado
+a un artista es difícil, y la comisión es fácil de aceptar porque sale de dinero
+ya ganado. La salida honesta a esa tensión no es elegir hoy, sino **empezar sin
+cobrar nada**: es la manera más barata de averiguar si alguien lo usa. Con
+pedidos reales encima de la mesa, cobrar membresía deja de ser una promesa.
+
+### Conflicto de interés: el mismo que se le critica a Glitter
+
+En el audio aparece, de pasada, que la organización también quiere vender lo
+suyo ahí ("yo hago llaveros de acrílico"). Eso es **exactamente** lo que se le
+reprocha a Glitter en el primer audio: ser dueño de la plaza y competir dentro
+de ella.
+
+No es un problema por sí solo —mucha feria vende su propio merch— pero se
+vuelve uno en cuanto haya que decidir quién sale primero en el listado, quién
+entra a una categoría o a quién se le aprueba una tienda. Si va a pasar, más
+vale que las reglas sean las mismas para todos y estén escritas antes de que
+haya un conflicto, no después. Es de las pocas cosas que salen gratis hoy y muy
+caras dentro de un año.
+
+### Lo barato y valioso: la reputación
+
+Estrellas y comentarios es, con diferencia, la parte con mejor relación entre lo
+que cuesta y lo que aporta. Lo que de verdad vende la plataforma es la confianza
+—saber que quien te va a mandar el llavero cumple— y eso no lo da ni el catálogo
+ni el chat. Además encaja con lo que ya existe: la verificación del staff.
+
 ### Lo que hay que decidir antes de escribir una línea
 
-1. ¿La feria de noviembre sale primero, sí o no? Hoy la base ni siquiera está
+1. **¿El dinero pasa por la plataforma o no?** Es la decisión que parte el
+   proyecto en dos y de la que cuelgan todas las demás. Con comisión: sí, y hay
+   que buscar pasarela. Sin comisión: no, y el catálogo se puede empezar ya.
+2. ¿La feria de noviembre sale primero, sí o no? Hoy la base ni siquiera está
    migrada y las páginas públicas leen mocks. Los vendedores del marketplace
    saldrían justamente de los expositores de la feria.
-2. ¿Cuánto cuesta la membresía y qué pasa si alguien deja de pagarla — se le
+3. ¿Cuánto cuesta la membresía y qué pasa si alguien deja de pagarla — se le
    oculta el catálogo o se le borra?
-3. ¿Qué responde Proyecto Yuca si un pedido no llega? (Aunque no toque el
+4. ¿Qué responde Proyecto Yuca si un pedido no llega? (Aunque no toque el
    dinero, va a recibir el reclamo igual.)
-4. ¿Entrega sólo en persona y coordinada, o hay envíos?
+5. ¿Entrega sólo en persona y coordinada, o hay envíos?
+6. Si la organización vende ahí dentro, ¿bajo qué reglas — las mismas que
+   todos, y quién lo arbitra?
+
+### Por dónde empezaría, si se decide hacerlo
+
+Tres etapas, cada una útil por sí sola aunque la siguiente no llegue nunca:
+
+1. **Catálogo con reputación, sin pagos.** Tienda por vendedor, productos con
+   foto y precio, estrellas y comentarios. El contacto se revela al confirmarse
+   el pedido, que resuelve lo del WhatsApp sin construir un chat. Gratis para
+   todos. Sirve para averiguar si esto le interesa a alguien.
+2. **Pedidos con estados**, reusando el patrón de las reservas —que ya está
+   probado— y el cobro manual por QR que ya existe.
+3. **Cobro**, y sólo aquí se decide comisión o membresía, con datos reales
+   delante en vez de con suposiciones.
 
 ## Requisitos del audio de la organización (2026-07-31)
 
