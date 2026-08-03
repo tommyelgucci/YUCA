@@ -105,7 +105,7 @@ test('el CSV escapa comas y comillas sin romper la fila', () => {
     preventa: 'Segunda preventa',
     monto_bs: '300',
     foto_archivo: 'X1-1.png',
-    qr_texto: 'https://proyectoyuca.bo/artistas/x',
+    qr_texto: 'https://proyectoyuca.com/artistas/x',
   };
 
   const lineas = aCsv([fila]).slice(1).split('\r\n');

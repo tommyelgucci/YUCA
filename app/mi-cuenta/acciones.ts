@@ -333,7 +333,7 @@ export async function agregarCompaneroAction(formData: FormData): Promise<Result
 
   const reservationId = String(formData.get('reservationId') ?? '');
   // Se acepta pegado el enlace del perfil, que es lo que la gente tiene a mano:
-  // de "proyectoyuca.bo/artistas/lunaria" nos quedamos con "lunaria".
+  // de "proyectoyuca.com/artistas/lunaria" nos quedamos con "lunaria".
   const slug = String(formData.get('slug') ?? '')
     .trim()
     .replace(/\/+$/, '')

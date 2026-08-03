@@ -74,7 +74,7 @@ const ESTADO_LEGIBLE: Record<string, string> = {
   pendiente: 'Reservada',
 };
 
-const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proyectoyuca.bo';
+const sitio = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://proyectoyuca.com';
 
 /** Nombre de archivo de la foto: previsible y sin acentos, para enlazar en Illustrator. */
 function nombreFoto(credencialId: string): string {

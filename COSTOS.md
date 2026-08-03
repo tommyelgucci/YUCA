@@ -14,7 +14,7 @@ plataformas los cambian, y el dominio hay que cotizarlo.
 | **Supabase** | Base de datos y fotos           | Sí, con dos peros: se pausa tras una semana sin uso, y 1 GB de archivos | 25 USD/mes |
 | **Clerk**    | Cuentas e inicio de sesión      | Sí, hasta 10.000 usuarios activos al mes                   | 25 USD/mes           |
 | **Resend**   | Correos (avisos de pedido, etc.) | Sí, 3.000 correos al mes                                  | 20 USD/mes           |
-| **Dominio**  | `proyectoyuca.bo`               | No                                                         | Cotizar en `nic.bo`  |
+| **Dominio**  | `proyectoyuca.com`              | No                                                         | ~12 USD/año          |
 
 ### El detalle que puede pasar desapercibido
 
@@ -51,11 +51,13 @@ bastante — pero es el límite que se va a tocar primero.
 ### 2. El dominio puede esperar
 
 Hasta lanzar la marca en serio, sirve el subdominio gratuito del hosting
-(`proyectoyuca.vercel.app` o equivalente). El `.bo` se compra cuando haya algo
-que anunciar. Coste hasta entonces: **cero**.
+(`proyectoyuca.vercel.app` o equivalente). El dominio propio se apunta cuando
+haya algo que anunciar. Coste hasta entonces: **cero**.
 
-Referencia que llegó de fuera: un `.bo` ronda los **200 Bs/año** (≈ 17 Bs/mes).
-Hay que confirmarlo en `nic.bo`, pero es del orden esperable.
+El dominio oficial es **`proyectoyuca.com`**, no un `.bo`. Es una confusión fácil
+porque en redes el usuario es `@proyecto_yuca.bo`, pero son cosas distintas. Un
+`.com` ronda los **12 USD al año** (≈ 85 Bs, unos 7 Bs al mes) — bastante menos
+que un `.bo`, y sin pasar por NIC Bolivia.
 
 ### 3. Cambiar Clerk por el login de Supabase no ahorra nada hoy
 
