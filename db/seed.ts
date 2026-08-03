@@ -12,8 +12,9 @@ import type { Edition } from '../lib/types';
  * Siembra la base con los datos de `lib/data/`.
  *
  * Uso: `npm run db:seed` (necesita DATABASE_URL y las migraciones aplicadas).
- * Es destructivo: vacía las tablas antes de escribir, para poder repetirlo
- * mientras se desarrolla.
+ *
+ * ⚠️ **Es destructivo**: vacía las tablas antes de escribir. Se niega a correr
+ * si detecta expositores registrados de verdad; ver `hayDatosReales`.
  */
 
 function filaEdicion(edicion: Edition) {
@@ -34,8 +35,37 @@ function filaEdicion(edicion: Edition) {
   };
 }
 
+/**
+ * Freno de mano.
+ *
+ * Sembrar vacía las tablas, y desde que existe una base real eso deja de ser
+ * inofensivo: bastaría un `npm run db:seed` distraído para borrar a todos los
+ * expositores que ya se registraron, con sus reservas y sus pagos.
+ *
+ * La marca de "esto es de mentira" es el `clerk_user_id`: la siembra lo escribe
+ * como `seed_…`, y quien se registre de verdad traerá el suyo de Clerk. Si
+ * aparece uno real, no se toca nada.
+ */
+async function hayDatosReales(db: ReturnType<typeof requireDb>): Promise<number> {
+  const filas = await db
+    .select({ clerkUserId: schema.exhibitors.clerkUserId })
+    .from(schema.exhibitors);
+
+  return filas.filter((fila) => !fila.clerkUserId.startsWith('seed_')).length;
+}
+
 async function seed() {
   const db = requireDb();
+
+  const reales = await hayDatosReales(db);
+  if (reales > 0 && !process.argv.includes('--force')) {
+    console.error(
+      `\n⛔ Hay ${reales} expositor(es) registrados de verdad en esta base.\n\n` +
+        '   Sembrar los borraría junto con sus reservas y sus pagos.\n' +
+        '   Si de verdad quieres vaciarla, corre: npm run db:seed -- --force\n',
+    );
+    process.exit(1);
+  }
 
   console.log('Vaciando tablas…');
   // El orden importa: primero lo que depende de otras tablas.
