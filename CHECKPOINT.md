@@ -27,13 +27,30 @@ Además: `db:seed` **se niega a correr** si detecta expositores registrados de
 verdad, porque vacía las tablas antes de escribir y ahora hay una base real que
 podría borrar.
 
+### La web pública ya lee la base (mismo día, después)
+
+`lib/feria.ts` es el puente. El mapa, la lista de participantes y
+`/artistas/[slug]` leen de ahí; `lib/data/` queda de respaldo para cuando no hay
+base configurada. **Con esto la etapa 0 está completa**: lo que alguien hace en
+`/mi-cuenta` se ve en la web.
+
+- **La geometría del plano se queda en el código.** De la base sale lo que
+  cambia solo —estado de la mesa y quién la ocupa—; el dibujo de las salas es
+  del local, y rehacerlo es editar un archivo en vez de migrar cincuenta filas.
+  Una mesa que la base tenga y el plano no, no se dibuja.
+- **La mesa se anuncia sólo con el pago confirmado.** Con la reserva pendiente
+  ya se figura como participante, pero la mesa puede caerse todavía.
+- **`FeriaContext`**: los datos entran una vez desde el servidor y bajan por
+  contexto. Son cuatro componentes a dos niveles; encadenar props obligaría a
+  las pestañas —que no usan ni una mesa— a acarrearlos.
+- 7 pruebas nuevas (69 en total), incluida una que serializa la lista pública y
+  comprueba que no arrastra nombre real, teléfono ni fecha de nacimiento.
+
 ### Pendiente inmediato
 
 - **Los 18 expositores sembrados son de mentira** (Estudio Lunaria, Papaya
   Comics…). Hay que borrarlos antes de abrir la convocatoria real, o se
   mezclarán con los de verdad en el mapa y en las credenciales.
-- Las páginas públicas (`StandMap`, participantes, `/artistas/[slug]`) siguen
-  leyendo `lib/data/`, no la base. Es lo siguiente de la etapa 0.
 
 **2026-08-03** — dos bloques: aceptación de las reglas antes de reservar, y el
 acompañante como expositor verificado. Con eso quedan **cuatro** huecos del

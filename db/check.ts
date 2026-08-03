@@ -67,42 +67,42 @@ const sql = postgres(conexion, { prepare: false, connect_timeout: 15 });
 
 async function comprobar() {
   try {
-  const tablas = await sql<{ nombre: string }[]>`
-    select tablename as nombre from pg_tables
-    where schemaname = 'public' order by tablename
-  `;
+    const tablas = await sql<{ nombre: string }[]>`
+      select tablename as nombre from pg_tables
+      where schemaname = 'public' order by tablename
+    `;
 
-  console.log(`  ✓ Conecta bien a ${sinContrasena(conexion)}`);
+    console.log(`  ✓ Conecta bien a ${sinContrasena(conexion)}`);
 
-  if (tablas.length === 0) {
-    console.log('\n  La base está VACÍA: no hay ninguna tabla.');
-    console.log('  Falta correr `npm run db:migrate`.');
-  } else {
-    console.log(`\nTablas (${tablas.length})`);
-    console.log('────────────');
-    tablas.forEach((t) => console.log(`  · ${t.nombre}`));
+    if (tablas.length === 0) {
+      console.log('\n  La base está VACÍA: no hay ninguna tabla.');
+      console.log('  Falta correr `npm run db:migrate`.');
+    } else {
+      console.log(`\nTablas (${tablas.length})`);
+      console.log('────────────');
+      tablas.forEach((t) => console.log(`  · ${t.nombre}`));
 
-    const [aplicadas] = await sql<{ total: number }[]>`
-      select count(*)::int as total from drizzle.__drizzle_migrations
-    `.catch(() => [{ total: 0 }]);
+      const [aplicadas] = await sql<{ total: number }[]>`
+        select count(*)::int as total from drizzle.__drizzle_migrations
+      `.catch(() => [{ total: 0 }]);
 
-    console.log(`\n  Migraciones aplicadas: ${aplicadas?.total ?? 0} de 6`);
-  }
-} catch (error) {
-  const mensaje = error instanceof Error ? error.message : String(error);
-  console.log(`  ✗ No conecta: ${mensaje}`);
+      console.log(`\n  Migraciones aplicadas: ${aplicadas?.total ?? 0} de 6`);
+    }
+  } catch (error) {
+    const mensaje = error instanceof Error ? error.message : String(error);
+    console.log(`  ✗ No conecta: ${mensaje}`);
 
-  // Los tres tropiezos que se repiten, traducidos.
-  if (/password authentication failed|SASL/i.test(mensaje)) {
-    console.log('\n  → La contraseña no es la correcta. Es la de la BASE de Supabase');
-    console.log('    (Settings → Database → Reset database password), no la de tu cuenta.');
-  } else if (/ENOTFOUND|getaddrinfo/i.test(mensaje)) {
-    console.log('\n  → Ese servidor no existe. Revisa que copiaste el host entero y que');
-    console.log('    no quedó la palabra REGION o PROYECTO del ejemplo.');
-  } else if (/ENETUNREACH|ETIMEDOUT|ECONNREFUSED/i.test(mensaje)) {
-    console.log('\n  → No se llega al servidor. Si estás usando la conexión directa');
-    console.log('    (db.XXXX.supabase.co) cámbiala por el session pooler, que va por IPv4.');
-  }
+    // Los tres tropiezos que se repiten, traducidos.
+    if (/password authentication failed|SASL/i.test(mensaje)) {
+      console.log('\n  → La contraseña no es la correcta. Es la de la BASE de Supabase');
+      console.log('    (Settings → Database → Reset database password), no la de tu cuenta.');
+    } else if (/ENOTFOUND|getaddrinfo/i.test(mensaje)) {
+      console.log('\n  → Ese servidor no existe. Revisa que copiaste el host entero y que');
+      console.log('    no quedó la palabra REGION o PROYECTO del ejemplo.');
+    } else if (/ENETUNREACH|ETIMEDOUT|ECONNREFUSED/i.test(mensaje)) {
+      console.log('\n  → No se llega al servidor. Si estás usando la conexión directa');
+      console.log('    (db.XXXX.supabase.co) cámbiala por el session pooler, que va por IPv4.');
+    }
     process.exitCode = 1;
   } finally {
     await sql.end();

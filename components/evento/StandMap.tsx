@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { Minus, Plus, RotateCcw } from 'lucide-react';
-import { ESTADOS, ZONAS, espaciosPorId, espacios, standsDeEspacio } from '@/lib/data/feria';
-import { getExpositorPorStand } from '@/lib/data/expositores';
+import { ESTADOS, ZONAS, espaciosPorId, espacios } from '@/lib/data/feria';
+import { useFeria } from './FeriaContext';
 import type { EspacioId } from '@/lib/types';
 import type { SelectionOrigin } from '@/hooks/useStandSelection';
 
@@ -36,6 +36,8 @@ export default function StandMap({
   const [zoom, setZoom] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
+
+  const { standsDeEspacio, getExpositorPorStand } = useFeria();
 
   const espacio = espaciosPorId.get(espacioId)!;
   const mesas = standsDeEspacio(espacioId);

@@ -1,6 +1,6 @@
 import { ArrowUpRight, CalendarDays, MapPin, QrCode, Store } from 'lucide-react';
 import { edicionActual } from '@/lib/data/edicion';
-import { stands } from '@/lib/data/feria';
+import { useFeria } from './FeriaContext';
 import { ctaMesa } from '@/lib/data/convocatorias';
 import { bs } from '@/lib/utils';
 import type { PaymentMethod } from '@/lib/types';
@@ -15,6 +15,7 @@ const METODOS: Record<PaymentMethod, { label: string; help: string; Icon: typeof
 };
 
 export default function InfoPanel() {
+  const { stands } = useFeria();
   const disponibles = stands.filter((s) => s.status === 'disponible').length;
   const mesa = ctaMesa();
 

@@ -3,15 +3,25 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, MapPin } from 'lucide-react';
 import { expositores } from '@/lib/data/expositores';
-import { ZONAS, espaciosPorId, getStand } from '@/lib/data/feria';
+import { ZONAS, espaciosPorId } from '@/lib/data/feria';
+import { expositorPorSlug, vistaFeria } from '@/lib/feria';
 import { edicionActual } from '@/lib/data/edicion';
 import { Avatar, CategoryBadge, VerifiedBadge } from '@/components/ui/Badges';
 import ExpositorSocials from '@/components/evento/ExpositorSocials';
 
-/** Perfiles conocidos en build time; el resto se genera bajo demanda. */
+/**
+ * Perfiles conocidos al compilar; el resto se genera bajo demanda.
+ *
+ * Salen de los datos de demostración a propósito: en build time no hay por qué
+ * tener base, y quien se registre después entra igual por la generación bajo
+ * demanda.
+ */
 export function generateStaticParams() {
   return expositores.map((expositor) => ({ slug: expositor.slug }));
 }
+
+// Un perfil cambia cuando su dueño lo edita o cuando le confirman la mesa.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -19,7 +29,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const expositor = expositores.find((e) => e.slug === slug);
+  const expositor = await expositorPorSlug(slug);
   if (!expositor) return { title: 'Artista no encontrado' };
 
   return { title: expositor.displayName, description: expositor.bio };
@@ -31,10 +41,11 @@ export default async function PerfilArtistaPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const expositor = expositores.find((e) => e.slug === slug);
+  const expositor = await expositorPorSlug(slug);
   if (!expositor) notFound();
 
-  const stand = getStand(expositor.standId);
+  const { stands } = await vistaFeria();
+  const stand = stands.find((s) => s.id === expositor.standId);
   const espacio = stand ? espaciosPorId.get(stand.espacioId) : undefined;
 
   return (
