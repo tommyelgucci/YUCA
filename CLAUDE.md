@@ -64,6 +64,7 @@ reglas aceptadas y las condiciones del acompañante de mesa.
 | Contenido de la portada                 | `lib/site.js`                                     |
 | Convocatorias / fases de inscripción     | `lib/data/convocatorias.ts`, función `ctaMesa()`  |
 | Precios vigentes                        | `lib/data/preventas.ts`                           |
+| Qué cuesta mantener la plataforma       | [`COSTOS.md`](COSTOS.md) — de ahí sale el precio de la membresía |
 | Esquema de datos                        | `db/schema.ts` → `db:generate` → revisar el SQL antes de aplicar |
 
 ## Estado del proyecto

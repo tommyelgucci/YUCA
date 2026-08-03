@@ -404,6 +404,12 @@ mes se sostiene si le genera unas 250 Bs mensuales en ventas que no habría
 tenido — para quien vende llaveros de 25–40 Bs, son siete u ocho ventas extra.
 Creíble cuando haya tráfico; imposible de justificar el primer día.
 
+**3 bis. Los números de costo están en [`COSTOS.md`](COSTOS.md).** Resumen: con
+la feria sola y sin cobrar, 0 USD al mes; con el marketplace cobrando, 45 USD
+(≈ 315 Bs) porque Vercel obliga a plan de pago en cuanto hay uso comercial y
+Supabase gratis pausa el proyecto tras una semana sin actividad. **Trece
+vendedores a 25 Bs cubren todo.** Los 25 Bs funcionan.
+
 **4. Por eso: gratis hasta la primera venta hecha por la plataforma.** Resuelve
 de una vez el "no sabemos cuánto cobrar", es fácil de explicar, y convierte la
 cuota en consecuencia de un resultado en vez de en una apuesta. Los vendedores
