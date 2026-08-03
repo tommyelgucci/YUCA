@@ -24,8 +24,82 @@ pueda estirar: está en sus condiciones de uso. Conviene contarlo con la cuenta
 desde el principio en vez de descubrirlo después.
 
 **El plan gratuito de Supabase pausa el proyecto tras una semana sin
-actividad.** Para probar está bien; para una tienda abierta al público no,
-porque significa que la web se cae sola en cuanto haya una semana floja.
+actividad** — pero eso **ya está resuelto y gratis**, ver abajo.
+
+## Lo que no hace falta pagar (revisión, 2026-08-03)
+
+Se contrastó esta cuenta con otras alternativas. Tres correcciones que bajan el
+costo real, y una advertencia sobre un cambio que sale mucho más caro de lo que
+parece.
+
+### 1. La pausa de Supabase no obliga a pagar: ya tenemos el remedio
+
+El proyecto gratuito se pausa tras una semana **sin actividad**, y esta
+plataforma tiene desde hace tiempo un cron que consulta la base:
+`/api/cron/expirar-reservas`, que libera las mesas cuyo plazo venció. Tiene que
+correr igual, por su propio motivo. Programado a diario, la base nunca pasa una
+semana quieta y nunca se pausa.
+
+O sea: **cero costo extra y cero servicios nuevos**. No hace falta contratar un
+"ping" externo ni cambiar de proveedor por esto.
+
+Entonces, ¿cuándo hace falta Supabase Pro de verdad? **Por el espacio de las
+fotos**, no por la pausa: el plan gratuito da 1 GB de archivos. Con fotos de
+producto comprimidas a ~200 KB eso son unas 5.000 imágenes, así que aguanta
+bastante — pero es el límite que se va a tocar primero.
+
+### 2. El dominio puede esperar
+
+Hasta lanzar la marca en serio, sirve el subdominio gratuito del hosting
+(`proyectoyuca.vercel.app` o equivalente). El `.bo` se compra cuando haya algo
+que anunciar. Coste hasta entonces: **cero**.
+
+Referencia que llegó de fuera: un `.bo` ronda los **200 Bs/año** (≈ 17 Bs/mes).
+Hay que confirmarlo en `nic.bo`, pero es del orden esperable.
+
+### 3. Cambiar Clerk por el login de Supabase no ahorra nada hoy
+
+Es verdad que tener dos servicios donde podría haber uno es redundante. Pero
+Clerk es gratis hasta 10.000 usuarios activos al mes, así que **hoy se paga 0
+por él**: cambiarlo ahorraría cero y costaría re-mapear la identidad de cada
+persona (`clerk_user_id` es clave única en `exhibitors` y aparece también en
+inscripciones y reseñas). Es una simplificación que tiene sentido plantearse el
+día que Clerk empiece a cobrar, no antes.
+
+### 4. Lo que sí ahorra los 20 USD de Vercel: mover el hosting
+
+Cloudflare Pages y Netlify permiten uso comercial en su plan gratuito, así que
+mudarse ahorra los 20 USD/mes que Vercel cobrará en cuanto haya membresías.
+
+No es cambiar un interruptor. Esta aplicación usa Next.js con Server Actions y
+tres cosas que dependen de Node: `exceljs` para exportar las credenciales,
+`Buffer` para procesar el comprobante subido, y una conexión TCP a Postgres.
+Cloudflare corre sobre Workers, que no es Node, así que las tres hay que
+revisarlas. Netlify está más cerca de funcionar tal cual.
+
+**El cálculo honesto**: se ahorran ~140 Bs/mes a cambio de unos días de
+migración y de fricción cada vez que se añada algo que asuma Node. Vale la pena
+plantearlo **cuando el ahorro pese**, no antes de tener el primer vendedor.
+
+### ⚠️ Lo que NO conviene: cambiar Supabase por Firebase
+
+Suena parecido —los dos son "base de datos gratis con login y fotos"— pero para
+este proyecto no lo es, y el motivo no es de precio.
+
+**La regla más importante de toda la plataforma la impone Postgres, no el
+código**: un índice único parcial sobre `reservations(stand_id)` hace
+literalmente imposible que dos personas paguen por la misma mesa. Firestore no
+tiene índices únicos. Esa garantía habría que reescribirla a mano con
+transacciones y documentos centinela, quedaría más débil, y con pago manual y
+días de espera es exactamente el error que no te puedes permitir.
+
+Se perderían además las 61 pruebas, que corren contra Postgres de verdad (PGlite
+en memoria) y por eso valen: prueban el mismo motor que va a estar en
+producción.
+
+No es cambiar de proveedor. Es rehacer los cimientos y quedarse con una versión
+peor de la garantía que más importa. **La recomendación es quedarse en
+Postgres.**
 
 ## Tres escenarios
 
@@ -33,19 +107,21 @@ Al cambio oficial (≈ 7 Bs por dólar). **Ojo con esto**: hay que pagarlo con
 tarjeta internacional y en dólares, así que el costo real en bolivianos depende
 de a cuánto se consigan — puede ser bastante más que la cuenta de abajo.
 
-### A — Hoy: sólo la feria, sin cobrar nada
+### A — Hoy: la feria y el marketplace en pruebas, sin cobrar
 
-Todo entra en los planes gratuitos.
+Todo en planes gratuitos, con el cron diario evitando la pausa de Supabase y el
+subdominio gratuito del hosting.
 
-**≈ 0 USD/mes**, más el dominio. Es donde estamos ahora y puede seguir así
-meses.
+**0 USD/mes.** No es un truco ni una fase de cortesía: mientras no se cobre nada
+y las fotos no pasen de 1 GB, esto se sostiene indefinidamente en cero.
 
-### B — Marketplace en marcha, con vendedores pagando
+### B — Marketplace cobrando membresías
 
-Vercel Pro (obligatorio al cobrar) + Supabase Pro (para que no se pause y quepan
-las fotos). Clerk y Resend siguen en gratis.
+Aquí Vercel obliga a Pro (uso comercial) y Supabase Pro entra cuando las fotos
+superen 1 GB. Clerk y Resend siguen gratis.
 
-**45 USD/mes ≈ 315 Bs/mes**
+**45 USD/mes ≈ 315 Bs/mes** — o **25 USD ≈ 175 Bs** si para entonces se movió el
+hosting a Cloudflare o Netlify.
 
 ### C — Creciendo: más de 10.000 usuarios activos o muchos correos
 
@@ -57,15 +133,20 @@ Los cuatro de pago.
 
 A **25 Bs por vendedor y mes**:
 
-| Escenario | Costo mensual | Vendedores para cubrirlo |
-| --------- | ------------- | ------------------------ |
-| A         | ~0 Bs         | 0                        |
-| B         | ~315 Bs       | **13**                   |
-| C         | ~630 Bs       | **26**                   |
+| Escenario                     | Costo mensual | Vendedores para cubrirlo |
+| ----------------------------- | ------------- | ------------------------ |
+| A (hoy)                       | 0 Bs          | **0**                    |
+| B (cobrando, en Vercel)       | ~315 Bs       | **13**                   |
+| B (cobrando, fuera de Vercel) | ~175 Bs       | **7**                    |
+| C (creciendo)                 | ~630 Bs       | **26**                   |
 
 Trece vendedores pagando 25 Bs sostienen la plataforma entera en el escenario
-realista. Es un número alcanzable, y es la respuesta a "¿cuánto cobramos?": los
-25 Bs **funcionan**, siempre que haya trece personas dispuestas a pagarlos.
+realista, y siete si para entonces se movió el hosting. Es un número alcanzable,
+y es la respuesta a "¿cuánto cobramos?": los 25 Bs **funcionan**.
+
+Y sobre todo: **hoy no hay que pagar nada**. La cuenta de arriba sólo empieza a
+correr el día que se cobre la primera membresía, que es justo el día en que hay
+con qué pagarla.
 
 ### No poner el precio justo en el punto de equilibrio
 
