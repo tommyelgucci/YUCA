@@ -69,5 +69,8 @@ reglas aceptadas y las condiciones del acompañante de mesa.
 
 ## Estado del proyecto
 
-Ver [`CHECKPOINT.md`](CHECKPOINT.md) para qué está hecho, qué falta y el
-rumbo inmediato — actualizarlo al cerrar cada bloque de trabajo relevante.
+- [`CHECKPOINT.md`](CHECKPOINT.md) — qué está hecho y qué falta. Actualizarlo al
+  cerrar cada bloque de trabajo relevante.
+- [`PLAN.md`](PLAN.md) — en qué orden se hace lo que falta y por qué.
+- [`COSTOS.md`](COSTOS.md) — qué cuesta sostener esto; de ahí sale el precio de
+  la membresía.

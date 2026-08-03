@@ -468,6 +468,14 @@ en la fila) no vale aquí: son muchas imágenes y grandes.
 6. Si la organización vende ahí dentro, ¿bajo qué reglas — las mismas que
    todos, y quién lo arbitra?
 
+### El plan acordado está en `PLAN.md`
+
+Se pidió planificar el camino completo priorizando rentabilidad y accesibilidad;
+el resultado vive en [`PLAN.md`](PLAN.md). Resumen: la feria primero (agosto),
+tienda como vitrina gratuita antes de noviembre, pedidos sin dinero después de
+la feria, y cobrar recién en 2027 con datos delante. La plataforma no toca el
+dinero en ninguna etapa.
+
 ### Por dónde empezaría, si se decide hacerlo
 
 Tres etapas, cada una útil por sí sola aunque la siguiente no llegue nunca:
