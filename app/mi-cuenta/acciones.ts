@@ -20,6 +20,7 @@ import {
 } from '@/lib/reservas';
 import { edicionActual } from '@/lib/data/edicion';
 import { precioActual, preventaVigente } from '@/lib/data/preventas';
+import { REGLAMENTO, esVersionVigente } from '@/lib/data/reglamento';
 import { esAudiencia, type ArtCategory } from '@/lib/types';
 import { puedeSerExpositor, situacionEdad } from '@/lib/edad';
 
@@ -189,7 +190,11 @@ const MOTIVO_EDAD: Record<string, string> = {
 /* Mesa y pago                                                                 */
 /* -------------------------------------------------------------------------- */
 
-export async function reservarMesaAction(standCode: string): Promise<ResultadoAccion> {
+export async function reservarMesaAction(
+  standCode: string,
+  /** Versión del reglamento que la persona tuvo delante al marcar la casilla. */
+  versionReglas: string,
+): Promise<ResultadoAccion> {
   const clerkUserId = await exigirSesion();
   const db = requireDb();
 
@@ -201,6 +206,18 @@ export async function reservarMesaAction(standCode: string): Promise<ResultadoAc
   // es un endpoint público al que se puede llamar directo.
   const edad = puedeSerExpositor(perfil);
   if (!edad.ok) return { ok: false, mensaje: MOTIVO_EDAD[edad.motivo] };
+
+  // Mismo motivo: la casilla del formulario no defiende nada por sí sola. Y se
+  // exige la versión vigente, no una cualquiera, para que no valga la de hace
+  // dos reglamentos.
+  if (!esVersionVigente(versionReglas)) {
+    return {
+      ok: false,
+      mensaje: versionReglas
+        ? 'Las reglas cambiaron mientras leías. Recarga la página y acéptalas de nuevo.'
+        : 'Antes de apartar mesa tienes que aceptar las reglas para expositores.',
+    };
+  }
 
   const kind = await kindDeStand(db, { editionId: edicionActual.id, standCode });
   if (!kind) return { ok: false, mensaje: 'Esa mesa ya no existe.' };
@@ -216,6 +233,7 @@ export async function reservarMesaAction(standCode: string): Promise<ResultadoAc
     exhibitorId: perfil.id,
     preventaId: preventaVigente.id,
     amountBob,
+    termsVersion: REGLAMENTO.version,
   });
 
   revalidatePath('/mi-cuenta');

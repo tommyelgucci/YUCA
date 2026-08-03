@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Check, Clock3, X } from 'lucide-react';
+import { Check, Clock3, ScrollText, X } from 'lucide-react';
 import { bs } from '@/lib/utils';
 import { confirmarPagoAction, rechazarPagoAction } from './acciones';
 
@@ -12,6 +12,8 @@ export interface ReservaPendiente {
   proofReference: string | null;
   createdAt: Date;
   expiresAt: Date;
+  termsVersion: string;
+  termsAcceptedAt: Date;
   exhibitorName: string;
   exhibitorSlug: string;
 }
@@ -79,6 +81,14 @@ export default function FilaReserva({ reserva }: { reserva: ReservaPendiente }) 
               <Clock3 size={13} aria-hidden="true" />
               {plazo.texto}
             </span>
+          </p>
+
+          {/* La constancia de qué reglamento aceptó: es lo que respalda al
+              equipo si más adelante hay un reclamo sobre las condiciones. */}
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-yuca-ink-soft">
+            <ScrollText size={12} aria-hidden="true" />
+            Aceptó <code className="font-bold">{reserva.termsVersion}</code> el{' '}
+            {reserva.termsAcceptedAt.toLocaleDateString('es-BO')}
           </p>
         </div>
 

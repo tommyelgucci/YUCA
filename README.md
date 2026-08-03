@@ -130,14 +130,19 @@ y con pago manual y días de espera esa carrera se pierde tarde o temprano.
 
 Hay otro índice igual por expositor: nadie aparta dos mesas a la vez.
 
+El mismo criterio sostiene la aceptación de las reglas: `terms_version` y
+`terms_accepted_at` son `not null` **sin valor por defecto**, así que no existe
+manera de crear una reserva sin dejar constancia de qué texto se aceptó y
+cuándo — ni desde el código ni con un `insert` a mano.
+
 ### Pruebas
 
 `npm test` corre contra **PGlite** —Postgres compilado a WASM, en memoria, sin
 servidor— así que se ejercita el mismo dialecto y las mismas restricciones que
 en Supabase. Cubre: reserva feliz, doble reserva, carrera simultánea, doble
 mesa por expositor, confirmación, expiración, cancelación, mesas de la
-organización, y que la base rechaza la doble reserva **aunque el estado del
-stand se desincronice**.
+organización, la constancia de las reglas aceptadas, y que la base rechaza la
+doble reserva **aunque el estado del stand se desincronice**.
 
 ### Ciclo de vida de una mesa
 
@@ -256,6 +261,26 @@ El cálculo compara mes y día, no sólo el año, y hay pruebas de los bordes:
 cumpleaños de hoy, el día antes de cumplir 17, y el 29 de febrero en años no
 bisiestos.
 
+### Reglas para expositores
+
+El pliego pide aceptar términos, condiciones y reglas antes de reservar, y
+poder decir después quién aceptó y cuándo. El texto vive en
+[`lib/data/reglamento.ts`](lib/data/reglamento.ts) con una **versión**, y lo
+que se guarda en la reserva es esa versión, no un "sí" suelto: dentro de un
+año, ante un reclamo, hace falta saber qué decían las reglas el día que esa
+persona las aceptó, no lo que dicen hoy. Cambiarlas es editar el texto y subir
+la versión; las reservas ya hechas conservan la vieja.
+
+La aceptación cuelga de la reserva y no del perfil porque lo que se acepta es
+participar en *esta* edición con *este* texto. Se comprueba en
+`reservarMesaAction` —igual que la edad, y por el mismo motivo— y se exige la
+versión vigente, no una cualquiera, para que no valga la de hace dos
+reglamentos. `/admin` muestra en cada fila de la cola qué versión aceptó.
+
+⚠️ El texto de las reglas es **provisional**: está escrito a partir de lo que
+la plataforma ya impone y de lo que dijo el audio, pero el reglamento oficial
+lo tiene que dar la organización.
+
 La captura del comprobante se guarda como `data:` URL en la propia fila de
 `reservations` (columna `proof_url`, ya existía en el esquema) en vez de contra
 un bucket de almacenamiento: evita depender de credenciales externas para algo
@@ -346,6 +371,8 @@ Marcado con `TODO` en el código:
 - Los expositores y el plano de `lib/data/` son de demostración.
 - Qué convocatorias siguen abiertas y hasta cuándo (las tres figuran abiertas).
 - Qué significa "Fase 3" y si habrá fases siguientes.
+- El reglamento oficial para expositores: el de `lib/data/reglamento.ts` es
+  provisional, y al reemplazarlo hay que subir su `version`.
 - Si comidas y emprendimientos ocupan mesas del mismo plano y a qué precio.
 
 Ya cargados: Instagram, TikTok, Facebook, Discord, WhatsApp y correo de

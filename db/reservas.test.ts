@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
@@ -27,8 +27,15 @@ import {
 
 const EDICION = 'yukawaii-4';
 
-/** Tanda e importe vigentes; los fija quien llama, no la base. */
-const TANDA = { preventaId: 'preventa-2', amountBob: 300 } as const;
+/**
+ * Lo que aporta quien llama en cada reserva: la tanda con su importe y la
+ * versión del reglamento que se aceptó. Nada de esto lo decide la base.
+ */
+const TANDA = {
+  preventaId: 'preventa-2',
+  amountBob: 300,
+  termsVersion: 'reglas-2026-08',
+} as const;
 
 /** Base limpia y sembrada para cada prueba. */
 async function baseDePrueba() {
@@ -282,6 +289,48 @@ test('la base impide la doble reserva aunque el estado del stand se desincronice
 
   assert.equal(segunda.ok, false);
   assert.equal(segunda.ok === false && segunda.motivo, 'ya-reservada');
+});
+
+test('la reserva deja constancia de qué reglas se aceptaron y cuándo', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  const antes = new Date();
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: 'C20',
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) throw new Error('la reserva debería haber entrado');
+
+  const [fila] = await db
+    .select({
+      termsVersion: schema.reservations.termsVersion,
+      termsAcceptedAt: schema.reservations.termsAcceptedAt,
+    })
+    .from(schema.reservations)
+    .where(eq(schema.reservations.id, reserva.reservationId));
+
+  assert.equal(fila.termsVersion, TANDA.termsVersion);
+  assert.ok(fila.termsAcceptedAt.getTime() >= antes.getTime());
+});
+
+test('la base rechaza una reserva sin reglas aceptadas', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  const [stand] = await db
+    .select({ id: schema.stands.id })
+    .from(schema.stands)
+    .where(eq(schema.stands.code, 'C20'));
+
+  // Se inserta a mano salteándose `reservarStand`: quien tiene que rechazarlo
+  // es el `not null` de la base, no una comprobación de la aplicación.
+  await assert.rejects(() =>
+    db.execute(sql`
+      insert into reservations (stand_id, exhibitor_id, amount_bob, expires_at)
+      values (${stand.id}, ${ana}, 300, now() + interval '2 days')
+    `),
+  );
 });
 
 test('el titular puede sumar un compañero de mesa', async () => {

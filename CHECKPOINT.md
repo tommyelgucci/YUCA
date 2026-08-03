@@ -5,6 +5,10 @@ al final de una fase.
 
 ## Última actualización
 
+**2026-08-03** — aceptación de las reglas antes de reservar (ver sección
+propia). Con esto quedan tres huecos del pliego cerrados y los que faltan
+necesitan datos o decisiones de la organización. 44 pruebas en verde.
+
 **2026-08-02** — segunda mitad de la Fase 2 en dos bloques: primero
 `/mi-cuenta` y la cola de verificación, después la edición de perfil y la
 separación público/personal. Fusionado `main` (PR #3: exportación de
@@ -190,8 +194,40 @@ Los dos primeros huecos del pliego que se podían cerrar sin pedir nada.
   teléfono, correo) aunque esa persona no pueda participar. Guardar menos
   datos de menores sería lo prudente, pero borrarlos deja al equipo sin saber
   por qué alguien no puede reservar. No es decisión técnica.
-- Las migraciones `0001` y `0002` **no están aplicadas a ninguna base real**
-  todavía: hace falta `DATABASE_URL` y `npm run db:migrate`.
+- Las migraciones `0001`, `0002` y `0003` **no están aplicadas a ninguna base
+  real** todavía: hace falta `DATABASE_URL` y `npm run db:migrate`.
+
+## Hecho (aceptación de reglas antes de reservar — 2026-08-03)
+
+Tercer hueco del pliego cerrado sin pedir nada. El audio pide aceptar términos,
+condiciones y reglas antes de reservar, y poder decir después quién aceptó.
+
+- **`lib/data/reglamento.ts`**: el texto con una `version`. Lo que se guarda en
+  la reserva es esa versión, no un "sí" suelto: ante un reclamo hay que poder
+  reconstruir qué decían las reglas ese día, no lo que dicen hoy. Cambiarlas =
+  editar el texto y subir la versión; lo ya reservado conserva la vieja.
+- **Migración `0003_brainy_karma.sql`**: `terms_version` y `terms_accepted_at`
+  en `reservations`, `not null` **sin default**, de modo que no exista forma de
+  insertar una reserva sin constancia. El SQL generado por drizzle-kit se
+  reescribió a mano (añadir → rellenar → poner `not null`): tal cual salía
+  reventaba en cualquier base con reservas ya sembradas.
+- Cuelga de la **reserva**, no del perfil: lo que se acepta es participar en
+  esta edición con este texto. Quien reserve otro año vuelve a leer.
+- Se comprueba en **`reservarMesaAction`**, igual que la edad y por el mismo
+  motivo, y se exige la versión **vigente**: la casilla del formulario no
+  defiende nada por sí sola.
+- `/mi-cuenta` muestra las reglas desplegables sobre el selector de mesas, con
+  la casilla que habilita los botones. `/admin` muestra en cada fila qué
+  versión aceptó y cuándo.
+- 2 pruebas nuevas (44 en total): la reserva guarda versión y fecha, y **la
+  base rechaza un `insert` a mano sin reglas aceptadas**.
+
+### Pendiente
+
+El texto de las reglas es **provisional**: sale de lo que la plataforma ya
+impone (edad, plazo, una mesa por expositor, compartir mesa) y de lo que dijo
+el audio. El reglamento oficial lo tiene que dar la organización; al
+reemplazarlo hay que subir la `version`.
 
 ## Requisitos del audio de la organización (2026-07-31)
 
@@ -209,8 +245,8 @@ yo hubiera supuesto. Marcado contra lo que ya existe:
 - ❌ Sección de colaboradores / patrocinadores destacados. No existe nada.
 
 **Inscripción a la feria**
-- ❌ Aceptación de términos, condiciones y reglas fijas antes de reservar. No
-  existe; habría que registrar quién aceptó y cuándo.
+- ✅ **Aceptación de términos, condiciones y reglas antes de reservar** — hecho
+  el 2026-08-03, ver sección propia. Falta el texto oficial de la organización.
 - Mapa por bloques con libre / reservado / ocupado ✅.
 - Compartir mesa ✅, pero con un matiz pendiente: el audio pide que el
   compañero sea **un usuario registrado y verificado** de la plataforma, y hoy

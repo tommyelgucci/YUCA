@@ -39,9 +39,16 @@ export async function reservarStand(
     /** Tanda vigente e importe que rige en ella; se congelan en la reserva. */
     preventaId: string;
     amountBob: number;
+    /**
+     * Versión del reglamento que aceptó. Es obligatoria en la firma porque la
+     * columna es `not null`: no hay reserva sin constancia de qué aceptó.
+     * Que sea la versión *vigente* lo comprueba quien llama, que es quien tiene
+     * delante el texto que se le mostró.
+     */
+    termsVersion: string;
   },
 ): Promise<ResultadoReserva> {
-  const { editionId, standCode, exhibitorId, preventaId, amountBob } = params;
+  const { editionId, standCode, exhibitorId, preventaId, amountBob, termsVersion } = params;
 
   try {
     return await db.transaction(async (tx) => {
@@ -71,6 +78,8 @@ export async function reservarStand(
           exhibitorId,
           preventaId,
           amountBob,
+          termsVersion,
+          termsAcceptedAt: new Date(),
           expiresAt,
         })
         .returning({ id: reservations.id });
@@ -306,6 +315,8 @@ export async function reservasPendientes(db: YucaDb, editionId: string) {
       proofReference: reservations.proofReference,
       createdAt: reservations.createdAt,
       expiresAt: reservations.expiresAt,
+      termsVersion: reservations.termsVersion,
+      termsAcceptedAt: reservations.termsAcceptedAt,
       exhibitorName: exhibitors.displayName,
       exhibitorSlug: exhibitors.slug,
     })

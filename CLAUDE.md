@@ -28,7 +28,8 @@ activarlos.
 `npm test`.** Cubre reserva feliz, doble reserva, carrera simultánea, doble
 mesa por expositor, confirmación, expiración, cancelación, mesas de
 organización, acompañantes, alta de perfil, choque de slug, verificación de
-staff, los tres tramos de edad y el permiso del tutor.
+staff, los tres tramos de edad, el permiso del tutor y la constancia de las
+reglas aceptadas.
 
 ## Convenciones de este repo
 
@@ -55,6 +56,7 @@ staff, los tres tramos de edad y el permiso del tutor.
 | Reglas de reserva/expiración            | `lib/reservas.ts`, `db/reservas.test.ts`          |
 | Perfil de expositor y verificación      | `lib/perfiles.ts`, `db/perfiles.test.ts`, `app/mi-cuenta/`, `app/admin/` |
 | Edad mínima y permiso del tutor         | `lib/edad.ts`, `lib/edad.test.ts` |
+| Reglas que se aceptan al reservar       | `lib/data/reglamento.ts` — al cambiar el texto, **subir `version`** |
 | Públicos (artistas/comidas/tiendas/…)   | `AUDIENCIAS` en `lib/types.ts` — un solo sitio |
 | El mapa de stands                       | `lib/data/feria.ts` (datos), `components/evento/StandMap.tsx` (render), `hooks/useStandSelection.ts` (estado compartido) |
 | Roles y permisos                        | `lib/auth.ts`, `middleware.ts` — y repetir el chequeo de staff en cada Server Action nueva |
