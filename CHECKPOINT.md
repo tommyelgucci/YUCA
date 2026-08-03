@@ -46,6 +46,33 @@ base configurada. **Con esto la etapa 0 está completa**: lo que alguien hace en
 - 7 pruebas nuevas (69 en total), incluida una que serializa la lista pública y
   comprueba que no arrastra nombre real, teléfono ni fecha de nacimiento.
 
+### Etapa 2: la tienda, ya visible (mismo día)
+
+La interfaz del catálogo, encima del motor que ya estaba probado.
+
+- **`/tienda`** — listado de tiendas abiertas. Sólo entran las que tienen algo
+  publicado: una tienda vacía en el listado es una promesa incumplida, y en un
+  catálogo nuevo son la mayoría.
+- **`/tienda/[slug]`** — catálogo, estrellas, reseñas firmadas y formulario
+  para dejar la tuya. Enlazada desde el perfil del artista **sólo si hay algo
+  que ver**.
+- **Panel del vendedor en `/mi-cuenta`** — abrir y cerrar la tienda, añadir
+  productos, publicarlos u ocultarlos, borrarlos. Cerrar la tienda no borra
+  nada.
+- **Sin botón de "comprar".** No hay pedidos ni pagos todavía (eso es la etapa
+  3): en su lugar se dice en voz alta que se escribe por redes, en vez de poner
+  un botón que no lleva a ningún lado.
+- **El nombre de la reseña sale de la cuenta, no del formulario.** Si lo
+  escribiera el navegador, la firma sería adorno — y la firma es lo único que
+  sostiene la confianza mientras no haya pedidos que verificar.
+- 2 pruebas nuevas (71 en total).
+
+**Lo que falta de esta etapa: las fotos.** `producto_fotos` existe y el marco de
+la imagen ya está dibujado en la ficha, pero nadie escribe todavía en esa tabla.
+Hace falta decidir el almacenamiento —lo natural es Supabase Storage, 1 GB
+gratis— y eso pide crear el bucket y sumar una clave al entorno. Es el siguiente
+bloque, y necesita las manos de la organización.
+
 ### Pendiente inmediato
 
 - **Los 18 expositores sembrados son de mentira** (Estudio Lunaria, Papaya

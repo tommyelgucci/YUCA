@@ -27,6 +27,8 @@ sin claves de Clerk oculta las cuentas y el panel. Para activarlos, copia
 | `/`                 | Portada: comunidad, agenda, ediciones pasadas, categorías, Discord |
 | `/evento`           | Vista del festival con pestañas Info · Participantes · Actividades |
 | `/artistas/[slug]`  | Perfil público del expositor                                  |
+| `/tienda`           | Listado de tiendas abiertas                                   |
+| `/tienda/[slug]`    | Catálogo de un vendedor, con estrellas y reseñas              |
 | `/admin`            | Cola de pagos y de perfiles por verificar (sólo rol `staff`)  |
 | `/admin/exportar`   | Credenciales a Excel/CSV para Illustrator                     |
 | `/mi-cuenta`        | El expositor edita su perfil y sus datos, elige mesa y declara su pago |

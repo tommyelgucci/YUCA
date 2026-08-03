@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, MapPin } from 'lucide-react';
+import { ArrowLeft, MapPin, Store } from 'lucide-react';
 import { expositores } from '@/lib/data/expositores';
 import { ZONAS, espaciosPorId } from '@/lib/data/feria';
 import { expositorPorSlug, vistaFeria } from '@/lib/feria';
+import { getDb } from '@/db';
+import { catalogoDe } from '@/lib/tienda';
 import { edicionActual } from '@/lib/data/edicion';
 import { Avatar, CategoryBadge, VerifiedBadge } from '@/components/ui/Badges';
 import ExpositorSocials from '@/components/evento/ExpositorSocials';
@@ -47,6 +49,11 @@ export default async function PerfilArtistaPage({
   const { stands } = await vistaFeria();
   const stand = stands.find((s) => s.id === expositor.standId);
   const espacio = stand ? espaciosPorId.get(stand.espacioId) : undefined;
+
+  // El enlace a la tienda sólo aparece si hay algo publicado que ver: mandar a
+  // alguien a un catálogo vacío es peor que no ofrecerlo.
+  const db = getDb();
+  const tieneTienda = db ? (await catalogoDe(db, slug)).length > 0 : false;
 
   return (
     <article className="container-yuca py-10 sm:py-14">
@@ -102,6 +109,13 @@ export default async function PerfilArtistaPage({
             <p className="mb-4 text-sm leading-relaxed text-yuca-ink-soft">
               Todavía no tiene mesa asignada en esta edición.
             </p>
+          )}
+
+          {tieneTienda && (
+            <Link href={`/tienda/${expositor.slug}`} className="btn-secondary btn-sm mb-4 w-full">
+              <Store size={15} aria-hidden="true" />
+              Ver su tienda
+            </Link>
           )}
 
           <h3 className="mb-2 text-xs font-extrabold uppercase tracking-[0.12em] text-yuca-ink-soft">

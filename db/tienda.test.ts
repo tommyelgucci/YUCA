@@ -9,11 +9,13 @@ import type { YucaDb } from './index';
 import {
   actualizarProducto,
   borrarProducto,
+  cambiarTienda,
   catalogoDe,
   dejarResena,
   productosDe,
   publicarProducto,
   reputacionDe,
+  tiendasAbiertas,
 } from '../lib/tienda';
 
 /**
@@ -249,4 +251,54 @@ test('sin reseñas el promedio es null, no cero', async () => {
   });
 
   assert.deepEqual(await reputacionDe(db, lunaria), { promedio: 4.5, total: 2 });
+});
+
+test('el listado sólo trae tiendas con algo publicado', async () => {
+  const { db, porSlug } = await baseDePrueba();
+  const lunaria = porSlug('lunaria');
+
+  // Tienda abierta pero vacía: no entra al listado.
+  assert.equal((await tiendasAbiertas(db)).length, 0);
+
+  // Un borrador tampoco cuenta: nadie puede verlo.
+  await publicarProducto(db, { exhibitorId: lunaria, nombre: 'A medias', precioBob: 10 });
+  assert.equal((await tiendasAbiertas(db)).length, 0);
+
+  await publicarProducto(db, {
+    exhibitorId: lunaria,
+    nombre: 'Llavero',
+    precioBob: 25,
+    publicar: true,
+  });
+  await publicarProducto(db, {
+    exhibitorId: lunaria,
+    nombre: 'Print',
+    precioBob: 40,
+    publicar: true,
+  });
+
+  const tiendas = await tiendasAbiertas(db);
+  assert.equal(tiendas.length, 1);
+  assert.equal(tiendas[0].slug, 'lunaria');
+  assert.equal(tiendas[0].productos, 2);
+  // "Desde" es el más barato de los publicados, no el borrador de 10.
+  assert.equal(tiendas[0].desde, 25);
+});
+
+test('cerrar la tienda la saca del listado sin borrar nada', async () => {
+  const { db, porSlug } = await baseDePrueba();
+  const lunaria = porSlug('lunaria');
+
+  await publicarProducto(db, {
+    exhibitorId: lunaria,
+    nombre: 'Llavero',
+    precioBob: 25,
+    publicar: true,
+  });
+  assert.equal((await tiendasAbiertas(db)).length, 1);
+
+  await cambiarTienda(db, { exhibitorId: lunaria, abierta: false });
+
+  assert.equal((await tiendasAbiertas(db)).length, 0);
+  assert.equal((await productosDe(db, lunaria)).length, 1);
 });

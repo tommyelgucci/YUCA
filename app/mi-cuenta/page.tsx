@@ -5,12 +5,14 @@ import { authEnabled, getNombreUsuario, getUsuarioId } from '@/lib/auth';
 import { perfilPorClerkId } from '@/lib/perfiles';
 import { puedeSerExpositor } from '@/lib/edad';
 import { companerosDe, reservaActivaDe, standsDisponibles } from '@/lib/reservas';
+import { productosDe } from '@/lib/tienda';
 import { edicionActual } from '@/lib/data/edicion';
 import FormularioPerfil from './FormularioPerfil';
 import PerfilPublico from './PerfilPublico';
 import DatosPrivados from './DatosPrivados';
 import ElegirStand from './ElegirStand';
 import PanelReserva from './PanelReserva';
+import PanelTienda from './PanelTienda';
 
 export const metadata: Metadata = { title: 'Mi cuenta' };
 
@@ -111,6 +113,14 @@ export default async function MiCuentaPage() {
             tienePermiso={Boolean(perfil.guardianConsentAt)}
           />
 
+          <PanelDeLaTienda
+            perfilId={perfil.id}
+            slug={perfil.slug}
+            abierta={perfil.tiendaAbierta}
+            verificado={perfil.verified}
+            db={db}
+          />
+
           <PanelDeExpositor
             perfilId={perfil.id}
             slug={perfil.slug}
@@ -182,5 +192,37 @@ async function PanelDeExpositor({
   const companeros = await companerosDe(db, reserva.id);
   return (
     <PanelReserva reserva={reserva} companeros={companeros} slug={slug} nombre={nombre} />
+  );
+}
+
+/** La tienda del vendedor; separada para poder cargar sus productos con `await`. */
+async function PanelDeLaTienda({
+  perfilId,
+  slug,
+  abierta,
+  verificado,
+  db,
+}: {
+  perfilId: string;
+  slug: string;
+  abierta: boolean;
+  verificado: boolean;
+  db: NonNullable<ReturnType<typeof getDb>>;
+}) {
+  const productos = await productosDe(db, perfilId);
+
+  return (
+    <PanelTienda
+      abierta={abierta}
+      verificado={verificado}
+      slug={slug}
+      productos={productos.map((producto) => ({
+        id: producto.id,
+        nombre: producto.nombre,
+        precioBob: producto.precioBob,
+        stock: producto.stock,
+        estado: producto.estado,
+      }))}
+    />
   );
 }

@@ -183,6 +183,47 @@ export async function catalogoDe(db: YucaDb, slug: string) {
     .orderBy(asc(productos.nombre));
 }
 
+/**
+ * Las tiendas que se pueden visitar, con cuántos productos tiene cada una.
+ *
+ * Sólo entran las que tienen algo publicado: una tienda vacía en el listado es
+ * una promesa incumplida, y en un catálogo nuevo son la mayoría.
+ */
+export async function tiendasAbiertas(db: YucaDb) {
+  return db
+    .select({
+      slug: exhibitors.slug,
+      displayName: exhibitors.displayName,
+      bio: exhibitors.bio,
+      avatarUrl: exhibitors.avatarUrl,
+      audience: exhibitors.audience,
+      productos: sql<number>`count(${productos.id})::int`,
+      desde: sql<number>`min(${productos.precioBob})::int`,
+    })
+    .from(exhibitors)
+    .innerJoin(
+      productos,
+      and(eq(productos.exhibitorId, exhibitors.id), eq(productos.estado, 'publicado')),
+    )
+    .where(and(eq(exhibitors.verified, true), eq(exhibitors.tiendaAbierta, true)))
+    .groupBy(exhibitors.id)
+    .orderBy(asc(exhibitors.displayName));
+}
+
+/** Abre o cierra la tienda de un vendedor. Cerrarla no borra sus productos. */
+export async function cambiarTienda(
+  db: YucaDb,
+  params: { exhibitorId: string; abierta: boolean },
+): Promise<boolean> {
+  const filas = await db
+    .update(exhibitors)
+    .set({ tiendaAbierta: params.abierta, updatedAt: new Date() })
+    .where(eq(exhibitors.id, params.exhibitorId))
+    .returning({ id: exhibitors.id });
+
+  return filas.length > 0;
+}
+
 export async function fotosDe(db: YucaDb, productoId: string) {
   return db
     .select({ id: productoFotos.id, url: productoFotos.url, alt: productoFotos.alt })
