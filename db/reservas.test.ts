@@ -13,6 +13,7 @@ import {
   confirmarPago,
   expirarReservasVencidas,
   registrarComprobante,
+  reservaActivaDe,
   reservarStand,
 } from '../lib/reservas';
 
@@ -337,6 +338,17 @@ test('la base rechaza una reserva sin reglas aceptadas', async () => {
       values (${stand.id}, ${ana}, 300, now() + interval '2 days')
     `),
   );
+});
+
+test('la reserva activa trae la sala, que la pantalla de confirmación necesita', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  await reservarStand(db, { editionId: EDICION, standCode: 'C20', exhibitorId: ana, ...TANDA });
+
+  const reserva = await reservaActivaDe(db, ana);
+
+  assert.equal(reserva?.espacioNombre, 'Salón Lirio');
+  assert.equal(reserva?.standNumero, 20);
 });
 
 test('el titular puede sumar un compañero verificado', async () => {

@@ -114,6 +114,7 @@ export default async function MiCuentaPage() {
           <PanelDeExpositor
             perfilId={perfil.id}
             slug={perfil.slug}
+            nombre={perfil.displayName}
             db={db}
             edad={puedeSerExpositor(perfil)}
           />
@@ -146,11 +147,13 @@ const AVISO_EDAD: Record<string, { titulo: string; detalle: string }> = {
 async function PanelDeExpositor({
   perfilId,
   slug,
+  nombre,
   db,
   edad,
 }: {
   perfilId: string;
   slug: string;
+  nombre: string;
   db: NonNullable<ReturnType<typeof getDb>>;
   edad: ReturnType<typeof puedeSerExpositor>;
 }) {
@@ -177,5 +180,7 @@ async function PanelDeExpositor({
   }
 
   const companeros = await companerosDe(db, reserva.id);
-  return <PanelReserva reserva={reserva} companeros={companeros} slug={slug} />;
+  return (
+    <PanelReserva reserva={reserva} companeros={companeros} slug={slug} nombre={nombre} />
+  );
 }

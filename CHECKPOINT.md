@@ -269,6 +269,24 @@ verificación se atrasa, bloquea a gente que ya pagó su mesa y sólo quiere sum
 a quien la comparte. Merece la pena vigilarlo cuando haya expositores reales; si
 molesta, la salida no es quitar la regla sino agilizar la cola.
 
+## Hecho (pantalla de confirmación — 2026-08-03)
+
+Último hueco del pliego que no dependía de nadie. Al confirmarse el pago,
+`/mi-cuenta` deja de mostrar un cartel de "Mesa confirmada" y muestra
+`MesaConfirmada.tsx`: felicitación con el nombre, número de mesa en grande con
+su sala, fecha y sede, cómo se entra y qué llevar.
+
+- Es el único momento en que se tiene toda la atención de quien acaba de pagar,
+  así que ahí van las instrucciones de ingreso. Si no están, se preguntan por
+  Instagram de una en una.
+- `lib/data/ingreso.ts` guarda esas instrucciones. Los horarios están en `null`
+  porque dependen de la sede: **lo que no se sabe no se muestra**, en vez de
+  inventar una hora que después haya que desmentir. Qué llevar no depende de la
+  sede, así que ya se muestra.
+- `reservaActivaDe` ahora trae también la sala: el número de mesa solo no sirve
+  para encontrarla cuando el evento reparte dos salones. Hay prueba (23 en
+  reservas, 62 en total).
+
 ## Propuesta nueva: marketplace de vendedores (2026-08-03)
 
 Llegaron cuatro audios con una idea distinta de todo lo anterior: una sección
@@ -510,13 +528,17 @@ yo hubiera supuesto. Marcado contra lo que ya existe:
 - Mapa por bloques con libre / reservado / ocupado ✅.
 - ✅ **Compartir mesa con un usuario registrado y verificado** — hecho el
   2026-08-03, ver sección propia.
-- ❌ Instrucciones de ingreso (horarios, cómo entrar) en la confirmación.
+- ⚠️ **Instrucciones de ingreso** — la pantalla ya las muestra
+  (`lib/data/ingreso.ts`), pero los horarios están en `null` porque dependen de
+  la sede. Lo que falta no se muestra en vez de inventarse; qué llevar sí se
+  muestra ya. Cuando haya sede, se rellena ese archivo y aparece solo.
 - Plazo de 2–3 días esperando el pago ✅ (`reservationTtlMinutes`, hoy 48 h).
 - ⚠️ **Pago por QR: falta el QR.** Hoy la persona declara la referencia de su
   transferencia, pero la plataforma no le muestra ningún código QR para pagar.
   Falta saber si el QR es fijo de la organización o uno por reserva.
-- Pantalla final de confirmación ✅ parcial (el panel dice "Mesa confirmada",
-  pero no es la pantalla de "¡Felicidades!" que describe el audio).
+- ✅ **Pantalla de "¡Felicidades!"** — hecha el 2026-08-03
+  (`app/mi-cuenta/MesaConfirmada.tsx`): número de mesa grande, sala, fecha y
+  sede, instrucciones de ingreso y qué llevar.
 
 **Exportación**
 - Excel con todos los datos ✅ y alimentar variables de Illustrator para

@@ -438,13 +438,18 @@ export async function reservaActivaDe(db: YucaDb, exhibitorId: string) {
       amountBob: reservations.amountBob,
       proofReference: reservations.proofReference,
       expiresAt: reservations.expiresAt,
+      confirmedAt: reservations.confirmedAt,
       standCode: stands.code,
       standNumero: stands.numero,
       standKind: stands.kind,
       maxCompaneros: stands.maxCompaneros,
+      // La sala hace falta en la pantalla de confirmación: el número de mesa
+      // solo no sirve para encontrarla si el evento reparte dos salones.
+      espacioNombre: espacios.name,
     })
     .from(reservations)
     .innerJoin(stands, eq(reservations.standId, stands.id))
+    .innerJoin(espacios, eq(stands.espacioId, espacios.id))
     .where(
       and(
         eq(reservations.exhibitorId, exhibitorId),
