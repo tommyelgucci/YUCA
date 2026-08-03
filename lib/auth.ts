@@ -17,6 +17,19 @@ export const authEnabled = Boolean(
  *
  * El rol vive en `publicMetadata.role` de Clerk y se asigna desde su panel.
  * Nunca se lee del cliente para decidir permisos: sólo en el servidor.
+ *
+ * Se busca en dos sitios, y el orden importa:
+ *
+ * 1. **En el token de sesión**, que no cuesta ninguna llamada de red. Pero ahí
+ *    sólo aparece si en el panel de Clerk se personalizó el token de sesión
+ *    con `{"metadata": "{{user.public_metadata}}"}`, que es un ajuste que no
+ *    viene puesto y que nada recuerda que exista.
+ * 2. **Preguntándole a Clerk** por el perfil completo. Es más lento, pero
+ *    funciona sin configurar nada.
+ *
+ * Depender sólo de lo primero significa que alguien marca a una persona como
+ * staff, lo ve bien guardado en el panel, y la web la sigue rechazando sin
+ * decir por qué. Ya pasó una vez; por eso hay respaldo.
  */
 export async function getRol(): Promise<UserRole | null> {
   if (!authEnabled) return null;
@@ -24,8 +37,13 @@ export async function getRol(): Promise<UserRole | null> {
   const { sessionClaims, userId } = await auth();
   if (!userId) return null;
 
-  const metadata = sessionClaims?.metadata as { role?: UserRole } | undefined;
-  return metadata?.role ?? 'asistente';
+  const enElToken = (sessionClaims?.metadata as { role?: UserRole } | undefined)?.role;
+  if (enElToken) return enElToken;
+
+  const user = await currentUser();
+  const enElPerfil = (user?.publicMetadata as { role?: UserRole } | undefined)?.role;
+
+  return enElPerfil ?? 'asistente';
 }
 
 export async function getUsuarioId(): Promise<string | null> {

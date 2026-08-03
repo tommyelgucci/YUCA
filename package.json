@@ -11,6 +11,7 @@
     "test": "tsx lib/edad.test.ts && tsx db/reservas.test.ts && tsx db/perfiles.test.ts && tsx db/tienda.test.ts && tsx lib/export/credenciales.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:check": "tsx db/check.ts",
     "db:seed": "tsx db/seed.ts"
   },
   "dependencies": {

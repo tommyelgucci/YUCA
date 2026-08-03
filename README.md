@@ -117,9 +117,15 @@ Postgres con Drizzle. `db/schema.ts` produce las formas de `lib/types.ts`.
 
 ```bash
 npm run db:generate   # SQL a partir del esquema
+npm run db:check      # diagnostica la conexión antes de migrar
 npm run db:migrate    # aplica migraciones (necesita DIRECT_URL)
 npm run db:seed       # siembra con los datos de lib/data/
 ```
+
+Si `db:migrate` falla, **corre `npm run db:check` primero**: drizzle-kit devuelve
+código 1 sin decir por qué, y ese comando sí dice si falta una variable, si quedó
+el texto de ejemplo sin reemplazar, si la contraseña no es la correcta o si el
+servidor no responde.
 
 **Supabase da dos cadenas de conexión y no son intercambiables.** La app usa el
 pooler en modo transacción (puerto 6543), que es lo correcto para un servidor
@@ -378,6 +384,24 @@ Clerk lleva la identidad; el rol vive en `publicMetadata.role` de cada usuario
 sólo se lee en el servidor: el middleware exige sesión en `/admin` y `/mi-cuenta`,
 y además **cada Server Action vuelve a comprobar que quien la llama es staff**,
 porque una Server Action es un endpoint público al que se puede llamar directo.
+
+**Cómo se marca a alguien como staff**: en el panel de Clerk → *Users* → esa
+persona → *Metadata* → **Public metadata** → `{ "role": "staff" }`. Tiene que ser
+*public* (no *private* ni *unsafe*) y la clave en inglés.
+
+⚠️ **Clerk no mete `publicMetadata` en el token de sesión por defecto.** Por eso
+`getRol()` lo busca primero en el token y, si no está, se lo pregunta a Clerk. Sin
+ese respaldo pasaba algo que vuelve loco a cualquiera: marcas a alguien como staff,
+lo ves guardado en el panel, y la web lo sigue rechazando.
+
+Si se quiere el camino rápido —sin esa segunda llamada—, en Clerk → *Configure* →
+*Sessions* → *Customize session token* se añade:
+
+```json
+{ "metadata": "{{user.public_metadata}}" }
+```
+
+Es opcional: sólo ahorra una llamada por petición.
 
 ## Pendiente de datos reales
 
