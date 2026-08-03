@@ -8,6 +8,19 @@ import { actividades } from '../lib/data/actividades';
 import { preventaVigente, precioActual } from '../lib/data/preventas';
 import type { Edition } from '../lib/types';
 
+/*
+ * Igual que en `drizzle.config.ts` y en `check.ts`: los scripts que se corren a
+ * mano con tsx no cargan `.env.local` solos —eso lo hace Next.js, y aquí no hay
+ * Next.js—. Sin esto, `requireDb()` no encuentra la conexión y el error culpa al
+ * entorno en vez de a quién debía leerlo. Va después de los imports porque
+ * `getDb()` mira `process.env` al llamarla, no al cargarse.
+ */
+try {
+  process.loadEnvFile('.env.local');
+} catch {
+  // Sin `.env.local` se sigue con lo que venga del entorno; `requireDb()` avisa.
+}
+
 /**
  * Siembra la base con los datos de `lib/data/`.
  *
