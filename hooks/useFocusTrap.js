@@ -19,8 +19,14 @@ const FOCUSABLE = [
  */
 export function useFocusTrap(active, containerRef, onEscape) {
   // Se guarda en ref para no re-montar el listener en cada render del padre.
+  // La asignación va en su propio efecto y no en el cuerpo del render: escribir
+  // un ref mientras se renderiza rompe el render concurrente de React, que
+  // puede empezar un render y descartarlo. Al listener le da igual, porque sólo
+  // lee el ref cuando alguien pulsa Escape, o sea siempre después de montar.
   const escapeRef = useRef(onEscape);
-  escapeRef.current = onEscape;
+  useEffect(() => {
+    escapeRef.current = onEscape;
+  }, [onEscape]);
 
   useEffect(() => {
     const node = containerRef.current;

@@ -25,12 +25,21 @@ type Pestana = (typeof PESTANAS)[number]['value'];
 export default function EventTabs() {
   const [tab, setTab] = useState<Pestana>('info');
 
+  /*
+   * Qué pestaña abrir según el enlace por el que se llegó.
+   *
+   * Va en un efecto por lo mismo que `useStandSelection`: `window` no existe en
+   * el servidor, y calcularlo en el valor inicial haría que servidor y
+   * navegador pintaran pestañas distintas —un desajuste de hidratación—.
+   */
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- ver arriba */
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get('tab') as Pestana | null;
     // Un enlace a un stand concreto abre directamente la pestaña del mapa.
     if (fromUrl && PESTANAS.some((p) => p.value === fromUrl)) setTab(fromUrl);
     else if (params.get('stand')) setTab('participantes');
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const handleChange = (value: string) => {

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { Leaf } from 'lucide-react';
 
 const RATIOS = {
@@ -37,12 +38,23 @@ export default function ImageFrame({
   return (
     <div className={`relative isolate overflow-hidden ${ratioClass} ${className}`}>
       {src ? (
-        <img
+        /*
+         * `next/image` y no un `<img>` suelto: estas son las fotos grandes del
+         * sitio —galería de ediciones y banners de actividad— y llegan de
+         * `public/`, así que Next puede servirlas ya redimensionadas y en
+         * formato moderno. Es la diferencia entre una portada de 2 MB y una de
+         * 80 KB en un teléfono con datos, que es como se va a mirar esto.
+         *
+         * `fill` en vez de medidas fijas porque el alto lo pone la proporción
+         * del contenedor (`aspect-*`), no la foto; por eso el padre lleva
+         * `relative`, que es lo que `fill` necesita.
+         */
+        <Image
           src={src}
           alt={alt}
-          loading="lazy"
-          decoding="async"
-          className={`h-full w-full object-cover ${imgClassName}`}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className={`object-cover ${imgClassName}`}
         />
       ) : (
         // Marcador de posición: decorativo, no anuncia nada a lectores de pantalla.

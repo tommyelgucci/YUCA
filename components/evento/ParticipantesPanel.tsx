@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { MapPin, Search } from 'lucide-react';
 import { ZONAS } from '@/lib/data/feria';
@@ -49,9 +49,19 @@ export default function ParticipantesPanel() {
 
   const categorias = useMemo(() => categoriasDisponibles(expositores), [expositores]);
 
-  /** El tipo de un participante sale de la mesa que ocupa, no de su perfil. */
-  const tipoDe = (expositor: Exhibitor): StandKind | undefined =>
-    getStand(expositor.standId)?.kind;
+  /**
+   * El tipo de un participante sale de la mesa que ocupa, no de su perfil.
+   *
+   * Envuelto en `useCallback` porque el filtro de abajo lo usa dentro de un
+   * `useMemo`: sin esto la función era nueva en cada render, la lista de
+   * dependencias mentía —declaraba `getStand`, pero de quien dependía de verdad
+   * era de ella— y bastaba cambiar cómo se calcula el tipo para que el filtro
+   * se quedara mostrando lo de antes.
+   */
+  const tipoDe = useCallback(
+    (expositor: Exhibitor): StandKind | undefined => getStand(expositor.standId)?.kind,
+    [getStand],
+  );
 
   /** Bajo el nombre: sus categorías de arte, o el tipo de mesa si no es artista. */
   const subtitulo = (expositor: Exhibitor): string => {
@@ -73,7 +83,7 @@ export default function ParticipantesPanel() {
         categoria === 'Todas' || e.categories.includes(categoria as never);
       return coincideTexto && coincideTipo && coincideCategoria;
     });
-  }, [expositores, getStand, query, tipo, categoria]);
+  }, [expositores, tipoDe, query, tipo, categoria]);
 
   // La categoría de arte sólo tiene sentido mirando ilustradores.
   const mostrarCategorias = tipo === 'todos' || tipo === 'ilustrador';

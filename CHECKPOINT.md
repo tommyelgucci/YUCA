@@ -25,6 +25,42 @@ presente con el resto de páginas dinámicas.
 "no puedo entrar a evento" del día anterior, que quedó tapado cuando se arregló
 el rol de staff de `/admin` — eran dos fallos distintos con el mismo síntoma.
 
+### El linter no estaba deprecado: no existía
+
+`npm run lint` llamaba a `next lint`, que **no encontraba ninguna configuración
+de ESLint** —no había ni `.eslintrc` ni `eslint.config.mjs`— y abría un
+asistente interactivo esperando una respuesta. O sea que el proyecto nunca tuvo
+linter, y los `eslint-disable` repartidos por el código no los comprobaba nadie.
+De paso, `next lint` desaparece en Next 16, así que el script llama ya a
+`eslint` directamente.
+
+Al encenderlo salieron **4 errores reales**, ninguno inventado:
+
+- **`useFocusTrap` escribía un ref durante el render.** Arreglado de verdad
+  (pasa a un efecto): escribir mientras se renderiza rompe el render concurrente
+  de React, que puede empezar un render y descartarlo.
+- **Tres `setState` dentro de un efecto.** Dos son correctos y se dejan con su
+  excepción explicada: `useStandSelection` y `EventTabs` leen la URL para saber
+  qué mesa o pestaña abrir, y `window` no existe al renderizar en el servidor —
+  calcularlo antes daría un desajuste de hidratación. El tercero, `RegisterModal`,
+  se deja porque es el modal de respaldo de cuando no hay Clerk y su envío
+  todavía no va a ningún sitio; no vale la pena refactorizarlo así.
+- **Un `eslint-disable` que no desactivaba nada** en `Badges.tsx`: estaba una
+  línea antes del `return`, no del `<img>`. Llevaba meses sin hacer efecto.
+- **`ParticipantesPanel` tenía una lista de dependencias que mentía**: el
+  `useMemo` del filtro declaraba `getStand`, pero de quien dependía era de
+  `tipoDe`, que se recreaba en cada render. Ahora va en `useCallback`.
+
+Dos reglas apagadas, cada una con su motivo escrito: `no-page-custom-font` (es
+del Pages Router, que aquí no existe) e `import/no-anonymous-default-export`
+sólo en los `*.config.mjs`, que Next y PostCSS exigen así.
+
+De paso, `ImageFrame` pasa a `next/image`: son las fotos grandes del sitio y
+salen de `public/`, así que Next puede servirlas redimensionadas. Es la
+diferencia entre 2 MB y 80 KB en un teléfono con datos.
+
+`npm run lint` sale limpio: 0 errores, 0 avisos.
+
 ### Dos fallos en las credenciales que se imprimen
 
 Salieron mirando los `TODO` viejos del repo. Los dos estaban en
