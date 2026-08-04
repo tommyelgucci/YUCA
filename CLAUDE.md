@@ -11,7 +11,7 @@ npm install
 npm run dev          # http://localhost:3000
 npm run build
 npm start
-npm test             # edad + reservas + perfiles + tienda + credenciales (PGlite = Postgres real en WASM)
+npm test             # edad + reservas + perfiles + tienda + feria + credenciales (PGlite = Postgres real en WASM)
 npm run lint
 
 npm run db:generate   # SQL desde db/schema.ts
@@ -60,7 +60,7 @@ reglas aceptadas y las condiciones del acompañante de mesa.
 | Reglas que se aceptan al reservar       | `lib/data/reglamento.ts` — al cambiar el texto, **subir `version`** |
 | Catálogo, productos y reseñas           | `lib/tienda.ts`, `db/tienda.test.ts` |
 | Públicos (artistas/comidas/tiendas/…)   | `AUDIENCIAS` en `lib/types.ts` — un solo sitio |
-| El mapa de stands                       | `lib/data/feria.ts` (datos), `components/evento/StandMap.tsx` (render), `hooks/useStandSelection.ts` (estado compartido) |
+| El mapa de stands                       | `lib/feria.ts` (lee la base), `lib/data/feria.ts` (geometría), `components/evento/StandMap.tsx` (render), `hooks/useStandSelection.ts` (estado) |
 | Roles y permisos                        | `lib/auth.ts`, `middleware.ts` — y repetir el chequeo de staff en cada Server Action nueva |
 | Contenido de la portada                 | `lib/site.js`                                     |
 | Convocatorias / fases de inscripción     | `lib/data/convocatorias.ts`, función `ctaMesa()`  |

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { YucaDb } from '@/db';
 import { exhibitors, productoFotos, productos, resenas } from '@/db/schema';
 import { esViolacionUnica } from '@/lib/db-errores';
@@ -183,12 +183,162 @@ export async function catalogoDe(db: YucaDb, slug: string) {
     .orderBy(asc(productos.nombre));
 }
 
+/**
+ * Las tiendas que se pueden visitar, con cuántos productos tiene cada una.
+ *
+ * Sólo entran las que tienen algo publicado: una tienda vacía en el listado es
+ * una promesa incumplida, y en un catálogo nuevo son la mayoría.
+ */
+export async function tiendasAbiertas(db: YucaDb) {
+  return db
+    .select({
+      slug: exhibitors.slug,
+      displayName: exhibitors.displayName,
+      bio: exhibitors.bio,
+      avatarUrl: exhibitors.avatarUrl,
+      audience: exhibitors.audience,
+      productos: sql<number>`count(${productos.id})::int`,
+      desde: sql<number>`min(${productos.precioBob})::int`,
+    })
+    .from(exhibitors)
+    .innerJoin(
+      productos,
+      and(eq(productos.exhibitorId, exhibitors.id), eq(productos.estado, 'publicado')),
+    )
+    .where(and(eq(exhibitors.verified, true), eq(exhibitors.tiendaAbierta, true)))
+    .groupBy(exhibitors.id)
+    .orderBy(asc(exhibitors.displayName));
+}
+
+/** Abre o cierra la tienda de un vendedor. Cerrarla no borra sus productos. */
+export async function cambiarTienda(
+  db: YucaDb,
+  params: { exhibitorId: string; abierta: boolean },
+): Promise<boolean> {
+  const filas = await db
+    .update(exhibitors)
+    .set({ tiendaAbierta: params.abierta, updatedAt: new Date() })
+    .where(eq(exhibitors.id, params.exhibitorId))
+    .returning({ id: exhibitors.id });
+
+  return filas.length > 0;
+}
+
 export async function fotosDe(db: YucaDb, productoId: string) {
   return db
     .select({ id: productoFotos.id, url: productoFotos.url, alt: productoFotos.alt })
     .from(productoFotos)
     .where(eq(productoFotos.productoId, productoId))
     .orderBy(asc(productoFotos.orden));
+}
+
+/**
+ * Cuelga una foto de un producto.
+ *
+ * `exhibitorId` se comprueba contra el dueño del producto: la subida ya pasó
+ * por una Server Action con sesión, pero el id del producto viaja en el
+ * formulario y sin esto cualquiera podría colgar imágenes en la tienda ajena.
+ *
+ * El orden sale del número de fotos que ya hay: la primera que se sube es la
+ * que se ve en el listado.
+ */
+export async function agregarFoto(
+  db: YucaDb,
+  params: { productoId: string; exhibitorId: string; url: string; alt?: string },
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [producto] = await tx
+      .select({ id: productos.id })
+      .from(productos)
+      .where(
+        and(eq(productos.id, params.productoId), eq(productos.exhibitorId, params.exhibitorId)),
+      )
+      .limit(1);
+
+    if (!producto) return false;
+
+    const [{ total }] = await tx
+      .select({ total: sql<number>`count(*)::int` })
+      .from(productoFotos)
+      .where(eq(productoFotos.productoId, params.productoId));
+
+    await tx.insert(productoFotos).values({
+      productoId: params.productoId,
+      url: params.url,
+      alt: params.alt?.trim() ?? '',
+      orden: total,
+    });
+
+    return true;
+  });
+}
+
+/** Quita una foto y devuelve su URL, para poder borrar también el archivo. */
+export async function quitarFoto(
+  db: YucaDb,
+  params: { fotoId: string; exhibitorId: string },
+): Promise<string | null> {
+  return db.transaction(async (tx) => {
+    const [foto] = await tx
+      .select({ id: productoFotos.id, url: productoFotos.url })
+      .from(productoFotos)
+      .innerJoin(productos, eq(productoFotos.productoId, productos.id))
+      .where(and(eq(productoFotos.id, params.fotoId), eq(productos.exhibitorId, params.exhibitorId)))
+      .limit(1);
+
+    if (!foto) return null;
+
+    await tx.delete(productoFotos).where(eq(productoFotos.id, params.fotoId));
+    return foto.url;
+  });
+}
+
+/** Todas las fotos de una lista de productos, agrupadas por producto. */
+export async function fotosDeTodos(db: YucaDb, productoIds: string[]) {
+  const porProducto = new Map<string, { id: string; url: string }[]>();
+  if (productoIds.length === 0) return porProducto;
+
+  const filas = await db
+    .select({
+      id: productoFotos.id,
+      productoId: productoFotos.productoId,
+      url: productoFotos.url,
+    })
+    .from(productoFotos)
+    .where(inArray(productoFotos.productoId, productoIds))
+    .orderBy(asc(productoFotos.orden));
+
+  filas.forEach((fila) => {
+    const lista = porProducto.get(fila.productoId) ?? [];
+    lista.push({ id: fila.id, url: fila.url });
+    porProducto.set(fila.productoId, lista);
+  });
+
+  return porProducto;
+}
+
+/**
+ * La primera foto de cada producto de una lista, en una sola consulta.
+ *
+ * Se resuelve aparte y no con un `join` en el catálogo porque un producto puede
+ * tener varias: el join multiplicaría las filas y habría que volver a agruparlas
+ * a mano.
+ */
+export async function portadasDe(db: YucaDb, productoIds: string[]) {
+  if (productoIds.length === 0) return new Map<string, string>();
+
+  const filas = await db
+    .select({ productoId: productoFotos.productoId, url: productoFotos.url, orden: productoFotos.orden })
+    .from(productoFotos)
+    .where(inArray(productoFotos.productoId, productoIds))
+    .orderBy(asc(productoFotos.orden));
+
+  const portadas = new Map<string, string>();
+  filas.forEach((fila) => {
+    if (!portadas.has(fila.productoId)) portadas.set(fila.productoId, fila.url);
+  });
+
+  return portadas;
 }
 
 /* -------------------------------------------------------------------------- */

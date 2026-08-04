@@ -27,6 +27,8 @@ sin claves de Clerk oculta las cuentas y el panel. Para activarlos, copia
 | `/`                 | Portada: comunidad, agenda, ediciones pasadas, categorías, Discord |
 | `/evento`           | Vista del festival con pestañas Info · Participantes · Actividades |
 | `/artistas/[slug]`  | Perfil público del expositor                                  |
+| `/tienda`           | Listado de tiendas abiertas                                   |
+| `/tienda/[slug]`    | Catálogo de un vendedor, con estrellas y reseñas              |
 | `/admin`            | Cola de pagos y de perfiles por verificar (sólo rol `staff`)  |
 | `/admin/exportar`   | Credenciales a Excel/CSV para Illustrator                     |
 | `/mi-cuenta`        | El expositor edita su perfil y sus datos, elige mesa y declara su pago |
@@ -319,11 +321,25 @@ tan chico como una captura de pantalla, con un límite de 4 MB en el archivo
 subido. Si el volumen lo justifica más adelante, migrar a Supabase Storage
 sólo toca `declararComprobanteAction` en `app/mi-cuenta/acciones.ts`.
 
-⚠️ **Pendiente de conectar**: el mapa, la lista de participantes y
-`/artistas/[slug]` siguen leyendo `lib/data/` (mocks), no la base. Un perfil o
-una mesa creados de verdad en `/mi-cuenta` no van a aparecer todavía en la web
-pública — falta la migración que haga de la base la fuente de verdad también
-ahí, pensada para cuando abra la Fase 4 y haya expositores reales que mostrar.
+### La web pública lee la base
+
+`lib/feria.ts` es el puente: el mapa, la lista de participantes y
+`/artistas/[slug]` leen de ahí, y `lib/data/` queda como respaldo para cuando no
+hay base configurada —un clon recién bajado tiene que poder verse—.
+
+Dos decisiones que sostienen esa capa:
+
+- **La geometría del plano se queda en el código.** De la base sale lo que
+  cambia solo (el estado de cada mesa y quién la ocupa); el dibujo de las salas
+  es del local y rehacerlo es editar un archivo, no migrar cincuenta filas. Una
+  mesa que la base tenga y el plano no, no se dibuja.
+- **La mesa se anuncia sólo con el pago confirmado.** Con la reserva pendiente
+  la persona ya figura como participante, pero su mesa todavía puede caerse y
+  publicarla sería prometer de más. Hay pruebas de las dos mitades.
+
+Los datos bajan por contexto (`FeriaContext`) desde el componente de servidor:
+los consumen cuatro componentes a dos niveles, y encadenarlos a mano obligaría
+a las pestañas —que no usan ni una mesa— a acarrearlos.
 
 **Fase 3** — inscripción a actividades con control de cupos y la Cacería de
 Sellos con QR (necesita tolerar mala señal dentro del salón).

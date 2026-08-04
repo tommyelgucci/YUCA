@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, ArrowUpRight, Clock3, MapPin, X } from 'lucide-react';
-import { ESTADOS, ZONAS, espaciosPorId, getStand } from '@/lib/data/feria';
-import { getExpositorPorStand } from '@/lib/data/expositores';
+import { ESTADOS, ZONAS, espaciosPorId } from '@/lib/data/feria';
+import { useFeria } from './FeriaContext';
 import { useMotionPresets } from '@/hooks/useMotionPresets';
 import { Avatar, CategoryBadge, VerifiedBadge } from '@/components/ui/Badges';
 import { ctaMesa } from '@/lib/data/convocatorias';
@@ -26,6 +26,7 @@ export default function StandDetail({
   onClose: () => void;
 }) {
   const { reduce, transition } = useMotionPresets();
+  const { getStand, getExpositorPorStand } = useFeria();
   const mesa = ctaMesa();
 
   const stand = getStand(standId);

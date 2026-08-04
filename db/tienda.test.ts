@@ -9,11 +9,17 @@ import type { YucaDb } from './index';
 import {
   actualizarProducto,
   borrarProducto,
+  agregarFoto,
+  cambiarTienda,
   catalogoDe,
   dejarResena,
+  fotosDe,
   productosDe,
   publicarProducto,
+  portadasDe,
+  quitarFoto,
   reputacionDe,
+  tiendasAbiertas,
 } from '../lib/tienda';
 
 /**
@@ -249,4 +255,139 @@ test('sin reseñas el promedio es null, no cero', async () => {
   });
 
   assert.deepEqual(await reputacionDe(db, lunaria), { promedio: 4.5, total: 2 });
+});
+
+test('el listado sólo trae tiendas con algo publicado', async () => {
+  const { db, porSlug } = await baseDePrueba();
+  const lunaria = porSlug('lunaria');
+
+  // Tienda abierta pero vacía: no entra al listado.
+  assert.equal((await tiendasAbiertas(db)).length, 0);
+
+  // Un borrador tampoco cuenta: nadie puede verlo.
+  await publicarProducto(db, { exhibitorId: lunaria, nombre: 'A medias', precioBob: 10 });
+  assert.equal((await tiendasAbiertas(db)).length, 0);
+
+  await publicarProducto(db, {
+    exhibitorId: lunaria,
+    nombre: 'Llavero',
+    precioBob: 25,
+    publicar: true,
+  });
+  await publicarProducto(db, {
+    exhibitorId: lunaria,
+    nombre: 'Print',
+    precioBob: 40,
+    publicar: true,
+  });
+
+  const tiendas = await tiendasAbiertas(db);
+  assert.equal(tiendas.length, 1);
+  assert.equal(tiendas[0].slug, 'lunaria');
+  assert.equal(tiendas[0].productos, 2);
+  // "Desde" es el más barato de los publicados, no el borrador de 10.
+  assert.equal(tiendas[0].desde, 25);
+});
+
+test('cerrar la tienda la saca del listado sin borrar nada', async () => {
+  const { db, porSlug } = await baseDePrueba();
+  const lunaria = porSlug('lunaria');
+
+  await publicarProducto(db, {
+    exhibitorId: lunaria,
+    nombre: 'Llavero',
+    precioBob: 25,
+    publicar: true,
+  });
+  assert.equal((await tiendasAbiertas(db)).length, 1);
+
+  await cambiarTienda(db, { exhibitorId: lunaria, abierta: false });
+
+  assert.equal((await tiendasAbiertas(db)).length, 0);
+  assert.equal((await productosDe(db, lunaria)).length, 1);
+});
+
+test('la portada es la primera foto que se subió', async () => {
+  const { db, porSlug } = await baseDePrueba();
+  const lunaria = porSlug('lunaria');
+
+  const creado = await publicarProducto(db, {
+    exhibitorId: lunaria,
+    nombre: 'Llavero',
+    precioBob: 25,
+    publicar: true,
+  });
+  if (!creado.ok) throw new Error('debería haberse creado');
+
+  await agregarFoto(db, {
+    productoId: creado.productoId,
+    exhibitorId: lunaria,
+    url: 'https://ejemplo/uno.jpg',
+  });
+  await agregarFoto(db, {
+    productoId: creado.productoId,
+    exhibitorId: lunaria,
+    url: 'https://ejemplo/dos.jpg',
+  });
+
+  const portadas = await portadasDe(db, [creado.productoId]);
+  assert.equal(portadas.get(creado.productoId), 'https://ejemplo/uno.jpg');
+});
+
+test('nadie cuelga ni quita fotos del producto de otro', async () => {
+  const { db, porSlug } = await baseDePrueba();
+
+  const creado = await publicarProducto(db, {
+    exhibitorId: porSlug('lunaria'),
+    nombre: 'Llavero',
+    precioBob: 25,
+    publicar: true,
+  });
+  if (!creado.ok) throw new Error('debería haberse creado');
+
+  const colada = await agregarFoto(db, {
+    productoId: creado.productoId,
+    exhibitorId: porSlug('papaya'),
+    url: 'https://ejemplo/intrusa.jpg',
+  });
+  assert.equal(colada, false);
+  assert.equal((await portadasDe(db, [creado.productoId])).size, 0);
+
+  // Y la dueña sí puede, pero otro no se la quita.
+  await agregarFoto(db, {
+    productoId: creado.productoId,
+    exhibitorId: porSlug('lunaria'),
+    url: 'https://ejemplo/suya.jpg',
+  });
+
+  const fotos = await fotosDe(db, creado.productoId);
+  assert.equal(await quitarFoto(db, { fotoId: fotos[0].id, exhibitorId: porSlug('papaya') }), null);
+  assert.equal(
+    await quitarFoto(db, { fotoId: fotos[0].id, exhibitorId: porSlug('lunaria') }),
+    'https://ejemplo/suya.jpg',
+  );
+});
+
+test('borrar el producto se lleva sus fotos', async () => {
+  const { db, porSlug } = await baseDePrueba();
+  const lunaria = porSlug('lunaria');
+
+  const creado = await publicarProducto(db, {
+    exhibitorId: lunaria,
+    nombre: 'Llavero',
+    precioBob: 25,
+    publicar: true,
+  });
+  if (!creado.ok) throw new Error('debería haberse creado');
+
+  await agregarFoto(db, {
+    productoId: creado.productoId,
+    exhibitorId: lunaria,
+    url: 'https://ejemplo/uno.jpg',
+  });
+
+  await borrarProducto(db, { productoId: creado.productoId, exhibitorId: lunaria });
+
+  // Lo impone la clave foránea con `on delete cascade`, no el código.
+  assert.equal((await db.select().from(schema.productoFotos)).length, 0);
 });

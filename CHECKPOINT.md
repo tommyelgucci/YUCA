@@ -5,6 +5,98 @@ al final de una fase.
 
 ## Última actualización
 
+**2026-08-03 (noche)** — **la base de datos existe y está viva.** Supabase
+`yuca` (São Paulo, Data API apagada), 11 tablas, 6 de 6 migraciones aplicadas y
+sembrada: 2 ediciones, 2 espacios, 54 mesas, 18 expositores de demostración, 18
+reservas, 4 actividades. Clerk configurado con cuentas reales y el rol de staff
+funcionando. **Con esto la etapa 0 de `PLAN.md` queda cerrada.**
+
+Costó una tarde entera, y no por el proyecto sino porque tres herramientas
+fallan sin decir por qué. Los tres agujeros están tapados:
+
+- `drizzle-kit` no lee `.env.local` (sólo `.env`) y devuelve código 1 sin
+  imprimir nada. Se carga a mano en `drizzle.config.ts`, `check.ts` y `seed.ts`.
+- Clerk **no mete `publicMetadata` en el token de sesión** salvo que se
+  personalice el token en su panel. `getRol()` ahora pregunta al perfil si no
+  lo encuentra en el token; sin eso, marcar a alguien como staff no servía de
+  nada y no había ningún error que lo explicara.
+- **`npm run db:check`** (nuevo) diagnostica el entorno y la conexión, y traduce
+  los tres fallos habituales. Es lo que hay que correr cuando algo no conecta.
+
+Además: `db:seed` **se niega a correr** si detecta expositores registrados de
+verdad, porque vacía las tablas antes de escribir y ahora hay una base real que
+podría borrar.
+
+### La web pública ya lee la base (mismo día, después)
+
+`lib/feria.ts` es el puente. El mapa, la lista de participantes y
+`/artistas/[slug]` leen de ahí; `lib/data/` queda de respaldo para cuando no hay
+base configurada. **Con esto la etapa 0 está completa**: lo que alguien hace en
+`/mi-cuenta` se ve en la web.
+
+- **La geometría del plano se queda en el código.** De la base sale lo que
+  cambia solo —estado de la mesa y quién la ocupa—; el dibujo de las salas es
+  del local, y rehacerlo es editar un archivo en vez de migrar cincuenta filas.
+  Una mesa que la base tenga y el plano no, no se dibuja.
+- **La mesa se anuncia sólo con el pago confirmado.** Con la reserva pendiente
+  ya se figura como participante, pero la mesa puede caerse todavía.
+- **`FeriaContext`**: los datos entran una vez desde el servidor y bajan por
+  contexto. Son cuatro componentes a dos niveles; encadenar props obligaría a
+  las pestañas —que no usan ni una mesa— a acarrearlos.
+- 7 pruebas nuevas (69 en total), incluida una que serializa la lista pública y
+  comprueba que no arrastra nombre real, teléfono ni fecha de nacimiento.
+
+### Etapa 2: la tienda, ya visible (mismo día)
+
+La interfaz del catálogo, encima del motor que ya estaba probado.
+
+- **`/tienda`** — listado de tiendas abiertas. Sólo entran las que tienen algo
+  publicado: una tienda vacía en el listado es una promesa incumplida, y en un
+  catálogo nuevo son la mayoría.
+- **`/tienda/[slug]`** — catálogo, estrellas, reseñas firmadas y formulario
+  para dejar la tuya. Enlazada desde el perfil del artista **sólo si hay algo
+  que ver**.
+- **Panel del vendedor en `/mi-cuenta`** — abrir y cerrar la tienda, añadir
+  productos, publicarlos u ocultarlos, borrarlos. Cerrar la tienda no borra
+  nada.
+- **Sin botón de "comprar".** No hay pedidos ni pagos todavía (eso es la etapa
+  3): en su lugar se dice en voz alta que se escribe por redes, en vez de poner
+  un botón que no lleva a ningún lado.
+- **El nombre de la reseña sale de la cuenta, no del formulario.** Si lo
+  escribiera el navegador, la firma sería adorno — y la firma es lo único que
+  sostiene la confianza mientras no haya pedidos que verificar.
+- 2 pruebas nuevas (71 en total).
+
+**Fotos: código listo, falta encender el almacenamiento.** `lib/almacenamiento.ts`
+sube a Supabase Storage por la API REST con `fetch`, sin añadir `supabase-js`:
+el proyecto ya habla con Postgres por su cuenta y un SDK entero para dos
+llamadas HTTP sería pagar mucho por poco. Límite 3 MB, sólo JPG/PNG/WEBP.
+
+- Mientras falten `NEXT_PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`,
+  **la interfaz no ofrece subir**, igual que sin Clerk no ofrece cuentas.
+  Prometer una subida que va a fallar es peor que no ofrecerla.
+- Primero se sube el archivo y después se escribe la fila: al revés, un fallo
+  dejaría una foto apuntando a una URL inexistente, y eso se ve en el catálogo
+  mientras que un archivo huérfano no lo ve nadie. Si la fila se rechaza
+  —producto ajeno— se borra el archivo recién subido.
+- Borrar el producto se lleva sus fotos por la clave foránea, no por código.
+- 3 pruebas nuevas (74 en total): la portada es la primera foto subida, nadie
+  cuelga ni quita fotos en producto ajeno, y el borrado en cascada.
+
+⚠️ **Sin probar contra Supabase de verdad.** Desde el entorno de desarrollo de
+Claude las conexiones salientes a Supabase están bloqueadas, así que este código
+está escrito pero no ejercitado contra el servicio. Espera una o dos rondas de
+ajuste la primera vez que se suba una foto.
+
+**Falta de la organización**: crear el bucket `productos` (público) y poner las
+dos variables en `.env.local`.
+
+### Pendiente inmediato
+
+- **Los 18 expositores sembrados son de mentira** (Estudio Lunaria, Papaya
+  Comics…). Hay que borrarlos antes de abrir la convocatoria real, o se
+  mezclarán con los de verdad en el mapa y en las credenciales.
+
 **2026-08-03** — dos bloques: aceptación de las reglas antes de reservar, y el
 acompañante como expositor verificado. Con eso quedan **cuatro** huecos del
 pliego cerrados; los que faltan (QR de pago, instrucciones de ingreso,

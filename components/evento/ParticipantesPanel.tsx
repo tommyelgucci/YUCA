@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { MapPin, Search } from 'lucide-react';
-import { expositores } from '@/lib/data/expositores';
-import { ZONAS, getStand } from '@/lib/data/feria';
+import { ZONAS } from '@/lib/data/feria';
+import { useFeria } from './FeriaContext';
 import { useStandSelection } from '@/hooks/useStandSelection';
-import type { EspacioId, StandKind } from '@/lib/types';
+import type { EspacioId, Exhibitor, StandKind } from '@/lib/types';
 import { Avatar, VerifiedBadge } from '@/components/ui/Badges';
 import StandMap from './StandMap';
 import StandLegend from './StandLegend';
@@ -27,22 +27,11 @@ const TIPOS: { id: 'todos' | StandKind; label: string }[] = [
 
 type TipoId = (typeof TIPOS)[number]['id'];
 
-function tipoDe(expositor: (typeof expositores)[number]): StandKind | undefined {
-  return getStand(expositor.standId)?.kind;
-}
-
 /** Categorías de arte presentes en esta edición, para el segundo filtro. */
-function categoriasDisponibles() {
+function categoriasDisponibles(expositores: Exhibitor[]) {
   const set = new Set<string>();
   expositores.forEach((e) => e.categories.forEach((c) => set.add(c)));
   return ['Todas', ...Array.from(set).sort()];
-}
-
-/** Bajo el nombre: sus categorías de arte, o el tipo de mesa si no es artista. */
-function subtitulo(expositor: (typeof expositores)[number]): string {
-  if (expositor.categories.length > 0) return expositor.categories.join(' · ');
-  const kind = tipoDe(expositor);
-  return kind ? ZONAS[kind].label : '';
 }
 
 /**
@@ -50,6 +39,7 @@ function subtitulo(expositor: (typeof expositores)[number]): string {
  * clic en el mapa resalta la tarjeta, clic en la tarjeta centra el mapa.
  */
 export default function ParticipantesPanel() {
+  const { expositores, getStand, origen } = useFeria();
   const { selected, origin, select } = useStandSelection();
   const [query, setQuery] = useState('');
   const [tipo, setTipo] = useState<TipoId>('todos');
@@ -57,7 +47,18 @@ export default function ParticipantesPanel() {
   const [categoria, setCategoria] = useState('Todas');
   const reduce = useReducedMotion();
 
-  const categorias = useMemo(categoriasDisponibles, []);
+  const categorias = useMemo(() => categoriasDisponibles(expositores), [expositores]);
+
+  /** El tipo de un participante sale de la mesa que ocupa, no de su perfil. */
+  const tipoDe = (expositor: Exhibitor): StandKind | undefined =>
+    getStand(expositor.standId)?.kind;
+
+  /** Bajo el nombre: sus categorías de arte, o el tipo de mesa si no es artista. */
+  const subtitulo = (expositor: Exhibitor): string => {
+    if (expositor.categories.length > 0) return expositor.categories.join(' · ');
+    const kind = tipoDe(expositor);
+    return kind ? ZONAS[kind].label : '';
+  };
 
   const visibles = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -72,7 +73,7 @@ export default function ParticipantesPanel() {
         categoria === 'Todas' || e.categories.includes(categoria as never);
       return coincideTexto && coincideTipo && coincideCategoria;
     });
-  }, [query, tipo, categoria]);
+  }, [expositores, getStand, query, tipo, categoria]);
 
   // La categoría de arte sólo tiene sentido mirando ilustradores.
   const mostrarCategorias = tipo === 'todos' || tipo === 'ilustrador';
@@ -182,6 +183,12 @@ export default function ParticipantesPanel() {
             </div>
           )}
         </div>
+
+        {origen === 'demostracion' && (
+          <p className="mb-3 rounded-2xl bg-yuca-cream/60 px-3 py-2 text-xs leading-relaxed text-yuca-ink-soft">
+            Participantes de ejemplo: todavía no hay expositores reales cargados.
+          </p>
+        )}
 
         <p className="mb-3 text-sm text-yuca-ink-soft" aria-live="polite">
           {visibles.length} {visibles.length === 1 ? 'participante' : 'participantes'}

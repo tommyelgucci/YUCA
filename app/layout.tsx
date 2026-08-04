@@ -44,9 +44,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen bg-yuca-bg font-body text-yuca-ink">
-        {/* Sin claves de Clerk la web funciona igual, sólo que sin cuentas. */}
+        {/*
+          Sin claves de Clerk la web funciona igual, sólo que sin cuentas.
+
+          `afterSignOutUrl` manda a la portada, que es pública. Sin eso Clerk
+          deja a la persona donde estaba, y si estaba en `/mi-cuenta` o
+          `/admin` —que el middleware protege— cerrar sesión parece no hacer
+          nada: la página rebota contra la protección y vuelve a pedir
+          identificarse.
+        */}
         {authEnabled ? (
-          <ClerkProvider>
+          <ClerkProvider afterSignOutUrl="/">
             <SiteChrome>{children}</SiteChrome>
           </ClerkProvider>
         ) : (
