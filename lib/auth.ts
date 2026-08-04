@@ -52,6 +52,34 @@ export async function getUsuarioId(): Promise<string | null> {
   return userId;
 }
 
+/**
+ * Exige sesión iniciada para ver una página; si no la hay, manda a entrar.
+ *
+ * Esto lo hacía el middleware por coincidencia de rutas (`createRouteMatcher`),
+ * que Clerk deprecó. El problema de aquel enfoque no era que fallara, sino
+ * **cómo iba a fallar**: la lista de rutas protegidas vivía lejos de las páginas
+ * que protegía, así que una página nueva bajo `/mi-cuenta` quedaba cubierta sin
+ * pedirlo, y el día que Clerk retire la función esas rutas se quedan abiertas
+ * sin que nada dé error. Preguntarlo aquí, donde se leen los datos, no se puede
+ * olvidar: si no se llama, no hay `userId` con el que consultar.
+ *
+ * Devuelve `null` sin redirigir cuando no hay claves de Clerk: sin cuentas
+ * configuradas no hay a dónde mandar a nadie, y esas pantallas ya avisan por su
+ * cuenta de que falta configurar el entorno.
+ *
+ * Ojo con `/nueva-contrasena`: **no** puede usar esto. Una sesión a medio
+ * recuperar cuenta como no identificada, así que se mandaría a entrar y Clerk
+ * la devolvería allí — el bucle que se arregló el 2026-08-04.
+ */
+export async function exigirSesionOEntrar(): Promise<string | null> {
+  if (!authEnabled) return null;
+
+  const { userId, redirectToSignIn } = await auth();
+  if (!userId) redirectToSignIn();
+
+  return userId;
+}
+
 export async function esStaff(): Promise<boolean> {
   return (await getRol()) === 'staff';
 }

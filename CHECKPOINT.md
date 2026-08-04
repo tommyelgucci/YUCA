@@ -242,17 +242,35 @@ Salieron al probar el alta de perfil desde el Codespace:
   de producto 3. Subido a 5 MB. Nadie lo había notado porque hasta hoy nunca se
   subió un archivo de verdad.
 
-### Deuda anotada: Clerk deprecó `createRouteMatcher`
+### ~~Deuda anotada: Clerk deprecó `createRouteMatcher`~~ · saldada el 2026-08-04
 
-Al arrancar, Clerk avisa de que `createRouteMatcher` —lo que usa
-`middleware.ts` para exigir sesión en `/admin` y `/mi-cuenta`— desaparecerá en
-su próxima versión mayor, y recomienda comprobar la sesión dentro de cada
-página en vez de por coincidencia de rutas.
+Clerk avisaba de que `createRouteMatcher` —lo que usaba `middleware.ts` para
+exigir sesión en `/admin` y `/mi-cuenta`— desaparece en su próxima versión
+mayor, y recomienda comprobar la sesión dentro de cada página.
 
-Funciona hoy y no corre prisa. Pero **hay que migrarlo antes de actualizar
-Clerk**, o esas dos rutas se quedan sin protección sin que nada falle a la
-vista. Nota aparte: cada Server Action ya comprueba la sesión por su cuenta, así
-que el agujero sería de páginas, no de escrituras.
+Ya está migrado. `middleware.ts` sólo ejecuta `clerkMiddleware()` —sigue
+haciendo falta para que `auth()` vea la sesión— y quien decide es
+**`exigirSesionOEntrar()`** (`lib/auth.ts`), llamado desde `/mi-cuenta`,
+`/admin` y `/admin/exportar`.
+
+Lo que se gana más allá de quitar la deprecación:
+
+- **La comprobación va pegada a la consulta.** Una lista de rutas vivía lejos de
+  las páginas que protegía: cubría de más lo que colgara de esas direcciones y
+  de menos cualquier pantalla nueva fuera de ellas. Aquí no se puede olvidar,
+  porque sin llamarla no hay identificador con el que consultar.
+- **En `/admin` el orden ahora es el correcto**: primero se manda a entrar a
+  quien no tiene sesión y sólo después se le dice a alguien que no tiene
+  permiso. Antes, sin el middleware, un visitante habría leído "no tienes
+  permiso" sin enterarse de que le bastaba con iniciar sesión.
+
+**Auditado antes de tocar nada**: las 19 Server Actions del proyecto comprueban
+la sesión por su cuenta (`exigirSesion`, `perfilDeLaSesion`, `exigirStaff`), así
+que el middleware sólo cubría páginas, no escrituras. Sin esa comprobación no se
+podía quitar con seguridad.
+
+⚠️ `/nueva-contrasena` **no** puede usar `exigirSesionOEntrar()`: una sesión a
+medio recuperar cuenta como no identificada y volvería el bucle.
 
 ### Pendiente inmediato
 

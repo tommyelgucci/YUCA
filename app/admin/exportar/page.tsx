@@ -2,13 +2,16 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, FileSpreadsheet, FileText, Info } from 'lucide-react';
 import { getDb } from '@/db';
-import { puedeAdministrar } from '@/lib/auth';
+import { exigirSesionOEntrar, puedeAdministrar } from '@/lib/auth';
 import { COLUMNAS, filasCredenciales } from '@/lib/export/credenciales';
 
 export const metadata: Metadata = { title: 'Exportar credenciales' };
 export const dynamic = 'force-dynamic';
 
 export default async function ExportarPage() {
+  // Igual que en `/admin`: primero identificarse, después el permiso.
+  await exigirSesionOEntrar();
+
   if (!(await puedeAdministrar())) {
     return (
       <div className="container-yuca py-12">

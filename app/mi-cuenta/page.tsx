@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { AlertTriangle, ShieldAlert } from 'lucide-react';
 import { getDb } from '@/db';
-import { authEnabled, getNombreUsuario, getUsuarioId } from '@/lib/auth';
+import { authEnabled, exigirSesionOEntrar, getNombreUsuario } from '@/lib/auth';
 import { perfilPorClerkId } from '@/lib/perfiles';
 import { puedeSerExpositor } from '@/lib/edad';
 import { companerosDe, reservaActivaDe, standsDisponibles } from '@/lib/reservas';
@@ -62,8 +62,9 @@ export default async function MiCuentaPage() {
     );
   }
 
-  // El middleware garantiza sesión iniciada.
-  const [userId, nombre] = await Promise.all([getUsuarioId(), getNombreUsuario()]);
+  // Esta página es toda de datos propios: sin sesión no hay nada que enseñar,
+  // así que se manda a entrar antes de consultar nada.
+  const [userId, nombre] = await Promise.all([exigirSesionOEntrar(), getNombreUsuario()]);
   const perfil = userId ? await perfilPorClerkId(db, userId) : null;
 
   return (
