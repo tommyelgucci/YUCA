@@ -21,6 +21,10 @@ función de verdad que envuelve al contexto.
 no la prerrenderiza y el fallo sólo aparecía al abrirla. Conviene tenerlo
 presente con el resto de páginas dinámicas.
 
+✅ **Comprobado el 2026-08-04**: la página abre y el mapa dibuja. Era también el
+"no puedo entrar a evento" del día anterior, que quedó tapado cuando se arregló
+el rol de staff de `/admin` — eran dos fallos distintos con el mismo síntoma.
+
 ### Foto de perfil (el último pendiente de la referencia de Glitter)
 
 `avatar_url` existía en la tabla desde el principio y **nada la escribía**: todos
@@ -61,6 +65,13 @@ enteras y ya se niega a correr—, así que hace falta algo quirúrgico.
   pasó por una reserva de mentira y ahora tiene una real no se toca.
 - Salió del banco de pruebas, no de la lectura: probado contra PGlite con las dos
   situaciones mezcladas.
+
+✅ **Corrido en vista previa contra Supabase el 2026-08-04**: lista los 18
+sembrados y **no** al expositor real que ya existe, que es lo que había que
+comprobar. **Decidido no borrarlos todavía**: hoy son lo único que hace que el
+mapa y la lista de participantes tengan algo que dibujar, y la web aún no está
+desplegada, así que no hay a quién confundir. El momento de correr `-- --si` es
+justo antes de abrir la Fase 4 o de desplegar en Vercel, lo que pase primero.
 
 
 **2026-08-03 (noche)** — **la base de datos existe y está viva.** Supabase
