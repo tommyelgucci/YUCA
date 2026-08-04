@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { stands as standsMock } from '@/lib/data/feria';
 import { expositores as expositoresMock } from '@/lib/data/expositores';
 import type { Exhibitor, Stand } from '@/lib/types';
@@ -34,7 +34,17 @@ const FeriaContext = createContext<Feria>({
   origen: 'demostracion',
 });
 
-export const FeriaProvider = FeriaContext.Provider;
+/**
+ * Quien monta el contexto es `app/evento/page.tsx`, que corre en el servidor.
+ * Exportar `FeriaContext.Provider` a secas no sirve: al cruzar la frontera de
+ * `'use client'` cada export se convierte en una referencia al cliente, y un
+ * contexto no es un componente, así que React revienta con "Element type is
+ * invalid. Received a promise that resolves to: Context". Hace falta una
+ * función de verdad que envuelva al proveedor de este lado.
+ */
+export function FeriaProvider({ value, children }: { value: Feria; children: ReactNode }) {
+  return <FeriaContext.Provider value={value}>{children}</FeriaContext.Provider>;
+}
 
 /**
  * La feria más los tres accesos que antes vivían en `lib/data/`.
