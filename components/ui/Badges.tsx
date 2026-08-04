@@ -42,8 +42,8 @@ export function Avatar({
   }[size];
 
   if (src) {
-    // eslint-disable-next-line @next/next/no-img-element -- avatares subidos por artistas, sin dominios fijos aún
     return (
+      // eslint-disable-next-line @next/next/no-img-element -- avatares subidos por artistas, sin dominios fijos aún
       <img
         src={src}
         alt={`Foto de perfil de ${name}`}

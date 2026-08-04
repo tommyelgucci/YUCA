@@ -62,7 +62,7 @@ reglas aceptadas y las condiciones del acompañante de mesa.
 | Catálogo, productos y reseñas           | `lib/tienda.ts`, `db/tienda.test.ts` |
 | Públicos (artistas/comidas/tiendas/…)   | `AUDIENCIAS` en `lib/types.ts` — un solo sitio |
 | El mapa de stands                       | `lib/feria.ts` (lee la base), `lib/data/feria.ts` (geometría), `components/evento/StandMap.tsx` (render), `hooks/useStandSelection.ts` (estado) |
-| Roles y permisos                        | `lib/auth.ts`, `middleware.ts` — y repetir el chequeo de staff en cada Server Action nueva |
+| Roles y permisos                        | `lib/auth.ts` — cada página protegida llama a `exigirSesionOEntrar()` y cada Server Action comprueba la sesión por su cuenta. `middleware.ts` ya no decide quién entra a dónde |
 | Contenido de la portada                 | `lib/site.js`                                     |
 | Convocatorias / fases de inscripción     | `lib/data/convocatorias.ts`, función `ctaMesa()`  |
 | Precios vigentes                        | `lib/data/preventas.ts`                           |

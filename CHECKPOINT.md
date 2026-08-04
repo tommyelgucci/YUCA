@@ -25,6 +25,42 @@ presente con el resto de páginas dinámicas.
 "no puedo entrar a evento" del día anterior, que quedó tapado cuando se arregló
 el rol de staff de `/admin` — eran dos fallos distintos con el mismo síntoma.
 
+### El linter no estaba deprecado: no existía
+
+`npm run lint` llamaba a `next lint`, que **no encontraba ninguna configuración
+de ESLint** —no había ni `.eslintrc` ni `eslint.config.mjs`— y abría un
+asistente interactivo esperando una respuesta. O sea que el proyecto nunca tuvo
+linter, y los `eslint-disable` repartidos por el código no los comprobaba nadie.
+De paso, `next lint` desaparece en Next 16, así que el script llama ya a
+`eslint` directamente.
+
+Al encenderlo salieron **4 errores reales**, ninguno inventado:
+
+- **`useFocusTrap` escribía un ref durante el render.** Arreglado de verdad
+  (pasa a un efecto): escribir mientras se renderiza rompe el render concurrente
+  de React, que puede empezar un render y descartarlo.
+- **Tres `setState` dentro de un efecto.** Dos son correctos y se dejan con su
+  excepción explicada: `useStandSelection` y `EventTabs` leen la URL para saber
+  qué mesa o pestaña abrir, y `window` no existe al renderizar en el servidor —
+  calcularlo antes daría un desajuste de hidratación. El tercero, `RegisterModal`,
+  se deja porque es el modal de respaldo de cuando no hay Clerk y su envío
+  todavía no va a ningún sitio; no vale la pena refactorizarlo así.
+- **Un `eslint-disable` que no desactivaba nada** en `Badges.tsx`: estaba una
+  línea antes del `return`, no del `<img>`. Llevaba meses sin hacer efecto.
+- **`ParticipantesPanel` tenía una lista de dependencias que mentía**: el
+  `useMemo` del filtro declaraba `getStand`, pero de quien dependía era de
+  `tipoDe`, que se recreaba en cada render. Ahora va en `useCallback`.
+
+Dos reglas apagadas, cada una con su motivo escrito: `no-page-custom-font` (es
+del Pages Router, que aquí no existe) e `import/no-anonymous-default-export`
+sólo en los `*.config.mjs`, que Next y PostCSS exigen así.
+
+De paso, `ImageFrame` pasa a `next/image`: son las fotos grandes del sitio y
+salen de `public/`, así que Next puede servirlas redimensionadas. Es la
+diferencia entre 2 MB y 80 KB en un teléfono con datos.
+
+`npm run lint` sale limpio: 0 errores, 0 avisos.
+
 ### Dos fallos en las credenciales que se imprimen
 
 Salieron mirando los `TODO` viejos del repo. Los dos estaban en
@@ -242,17 +278,35 @@ Salieron al probar el alta de perfil desde el Codespace:
   de producto 3. Subido a 5 MB. Nadie lo había notado porque hasta hoy nunca se
   subió un archivo de verdad.
 
-### Deuda anotada: Clerk deprecó `createRouteMatcher`
+### ~~Deuda anotada: Clerk deprecó `createRouteMatcher`~~ · saldada el 2026-08-04
 
-Al arrancar, Clerk avisa de que `createRouteMatcher` —lo que usa
-`middleware.ts` para exigir sesión en `/admin` y `/mi-cuenta`— desaparecerá en
-su próxima versión mayor, y recomienda comprobar la sesión dentro de cada
-página en vez de por coincidencia de rutas.
+Clerk avisaba de que `createRouteMatcher` —lo que usaba `middleware.ts` para
+exigir sesión en `/admin` y `/mi-cuenta`— desaparece en su próxima versión
+mayor, y recomienda comprobar la sesión dentro de cada página.
 
-Funciona hoy y no corre prisa. Pero **hay que migrarlo antes de actualizar
-Clerk**, o esas dos rutas se quedan sin protección sin que nada falle a la
-vista. Nota aparte: cada Server Action ya comprueba la sesión por su cuenta, así
-que el agujero sería de páginas, no de escrituras.
+Ya está migrado. `middleware.ts` sólo ejecuta `clerkMiddleware()` —sigue
+haciendo falta para que `auth()` vea la sesión— y quien decide es
+**`exigirSesionOEntrar()`** (`lib/auth.ts`), llamado desde `/mi-cuenta`,
+`/admin` y `/admin/exportar`.
+
+Lo que se gana más allá de quitar la deprecación:
+
+- **La comprobación va pegada a la consulta.** Una lista de rutas vivía lejos de
+  las páginas que protegía: cubría de más lo que colgara de esas direcciones y
+  de menos cualquier pantalla nueva fuera de ellas. Aquí no se puede olvidar,
+  porque sin llamarla no hay identificador con el que consultar.
+- **En `/admin` el orden ahora es el correcto**: primero se manda a entrar a
+  quien no tiene sesión y sólo después se le dice a alguien que no tiene
+  permiso. Antes, sin el middleware, un visitante habría leído "no tienes
+  permiso" sin enterarse de que le bastaba con iniciar sesión.
+
+**Auditado antes de tocar nada**: las 19 Server Actions del proyecto comprueban
+la sesión por su cuenta (`exigirSesion`, `perfilDeLaSesion`, `exigirStaff`), así
+que el middleware sólo cubría páginas, no escrituras. Sin esa comprobación no se
+podía quitar con seguridad.
+
+⚠️ `/nueva-contrasena` **no** puede usar `exigirSesionOEntrar()`: una sesión a
+medio recuperar cuenta como no identificada y volvería el bucle.
 
 ### Pendiente inmediato
 

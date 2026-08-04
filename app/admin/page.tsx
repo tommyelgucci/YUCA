@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AlertTriangle, BadgeCheck, FileSpreadsheet, Inbox } from 'lucide-react';
 import { getDb } from '@/db';
-import { authEnabled, puedeAdministrar } from '@/lib/auth';
+import { authEnabled, exigirSesionOEntrar, puedeAdministrar } from '@/lib/auth';
 import { perfilesPorVerificar } from '@/lib/perfiles';
 import { reservasPendientes } from '@/lib/reservas';
 import { edicionActual } from '@/lib/data/edicion';
@@ -57,7 +57,12 @@ export default async function AdminPage() {
     );
   }
 
-  // El middleware garantiza que hay sesión; el permiso se comprueba aquí.
+  // Dos preguntas distintas, y el orden importa: quien no entró se manda a
+  // entrar, y sólo a quien ya está identificado se le puede decir que no tiene
+  // permiso. Al revés, alguien sin sesión leería "no tienes permiso" y no
+  // sabría que le basta con iniciar sesión.
+  await exigirSesionOEntrar();
+
   if (!(await puedeAdministrar())) {
     return (
       <div className="container-yuca py-12">

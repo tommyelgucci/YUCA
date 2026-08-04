@@ -106,13 +106,26 @@ export default function RegisterModal({ open, variant = 'welcome', onClose, onSu
   useBodyScrollLock(open);
   useFocusTrap(open, dialogRef, onClose);
 
-  // Cada apertura empieza limpia y en la variante pedida.
+  /*
+   * Cada apertura empieza limpia y en la variante pedida.
+   *
+   * La forma que recomienda React para esto es remontar el componente con una
+   * `key` distinta, pero aquí el diálogo se queda montado a propósito: la
+   * animación de salida de `AnimatePresence` necesita que siga existiendo
+   * mientras se cierra, y remontarlo la haría desaparecer de golpe.
+   *
+   * Además este modal es el respaldo de cuando **no** hay claves de Clerk (con
+   * ellas manda `AccountActions`), y su envío todavía no va a ningún sitio. No
+   * vale la pena refactorizarlo mientras siga en ese estado.
+   */
   useEffect(() => {
     if (!open) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- ver arriba */
     setMode(variant);
     setValues(EMPTY_FORM);
     setErrors({});
     setSubmitted(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [open, variant]);
 
   const copy = COPY[mode] ?? COPY.welcome;

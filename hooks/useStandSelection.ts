@@ -22,11 +22,21 @@ export function useStandSelection() {
   const [selected, setSelected] = useState<string | null>(null);
   const originRef = useRef<SelectionOrigin>('url');
 
-  // Lectura inicial del enlace compartido.
+  /*
+   * Lectura inicial del enlace compartido.
+   *
+   * Tiene que ser en un efecto, aunque la regla `set-state-in-effect` prefiera
+   * lo contrario: `window` no existe al renderizar en el servidor. Ponerlo en
+   * el valor inicial del `useState` haría que el servidor pintara "nada
+   * seleccionado" y el navegador "C20 seleccionada" en el mismo render, que es
+   * un desajuste de hidratación y React lo tira todo abajo. Después de montar
+   * es el único momento en que se puede saber qué dice la URL.
+   */
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get(PARAM);
     if (fromUrl) {
       originRef.current = 'url';
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- ver arriba
       setSelected(fromUrl);
     }
   }, []);
