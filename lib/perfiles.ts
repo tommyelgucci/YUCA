@@ -210,6 +210,41 @@ export async function actualizarDatosPrivados(
 }
 
 /**
+ * Pone o quita la foto de perfil, y devuelve la que había.
+ *
+ * Devuelve la anterior para que quien llama pueda borrar ese archivo del
+ * bucket: sin eso, cambiar de foto cinco veces deja cuatro archivos pagando
+ * espacio que nadie va a mirar nunca.
+ *
+ * Va aparte de `actualizarPerfilPublico` porque se guarda sola, en cuanto se
+ * elige el archivo. Meterla en aquel formulario obligaría a subir la imagen
+ * antes de saber si el resto de campos son válidos.
+ */
+export async function cambiarAvatar(
+  db: YucaDb,
+  params: { exhibitorId: string; url: string | null },
+): Promise<{ ok: boolean; anterior: string | null }> {
+  // Se lee antes de escribir porque `returning` de un `update` devuelve la
+  // fila nueva, no la vieja. Dos peticiones a la vez podrían dejar un archivo
+  // huérfano; es el mismo daño asumido en el resto del módulo —un archivo que
+  // no ve nadie— y no justifica una transacción.
+  const [antes] = await db
+    .select({ avatarUrl: exhibitors.avatarUrl })
+    .from(exhibitors)
+    .where(eq(exhibitors.id, params.exhibitorId))
+    .limit(1);
+
+  if (!antes) return { ok: false, anterior: null };
+
+  await db
+    .update(exhibitors)
+    .set({ avatarUrl: params.url, updatedAt: new Date() })
+    .where(eq(exhibitors.id, params.exhibitorId));
+
+  return { ok: true, anterior: antes.avatarUrl };
+}
+
+/**
  * Perfiles a la espera de la insignia de verificado, del más viejo al más nuevo.
  *
  * Trae los datos personales a propósito: verificar es justamente cotejar que

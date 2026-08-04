@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Eye, Pencil } from 'lucide-react';
+import { useState, useTransition } from 'react';
+import { Camera, Eye, Pencil, X } from 'lucide-react';
 import { AUDIENCIA_LABEL } from '@/lib/types';
 import { Avatar, VerifiedBadge } from '@/components/ui/Badges';
+import { cambiarAvatarAction } from './acciones';
 import FormularioPerfil, { type ValoresPerfil } from './FormularioPerfil';
 
 /**
@@ -18,13 +19,23 @@ export default function PerfilPublico({
   slug,
   verified,
   avatarUrl,
+  puedeSubirFoto,
 }: {
   valores: ValoresPerfil;
   slug: string;
   verified: boolean;
   avatarUrl: string | null;
+  /** Falso mientras no haya almacenamiento configurado; entonces no se ofrece. */
+  puedeSubirFoto: boolean;
 }) {
   const [editando, setEditando] = useState(false);
+  const [pendiente, startTransition] = useTransition();
+  const [avisoFoto, setAvisoFoto] = useState<string | null>(null);
+
+  const cambiarFoto = (formData: FormData) =>
+    startTransition(async () => {
+      setAvisoFoto((await cambiarAvatarAction(formData)).mensaje);
+    });
 
   const redes = [
     { label: 'Instagram', valor: valores.instagram },
@@ -55,7 +66,43 @@ export default function PerfilPublico({
       ) : (
         <div>
           <div className="mb-4 flex items-start gap-3">
-            <Avatar src={avatarUrl} name={valores.displayName} />
+            {puedeSubirFoto ? (
+              <form action={cambiarFoto} className="relative shrink-0">
+                <span className={pendiente ? 'block opacity-50' : 'block'}>
+                  <Avatar src={avatarUrl} name={valores.displayName} />
+                </span>
+
+                <label className="absolute -bottom-1 -right-1 cursor-pointer rounded-full bg-yuca-green p-1.5 text-white shadow-sm hover:bg-yuca-green-deep">
+                  <Camera size={13} aria-hidden="true" />
+                  <span className="sr-only">
+                    {avatarUrl ? 'Cambiar mi foto de perfil' : 'Subir mi foto de perfil'}
+                  </span>
+                  <input
+                    type="file"
+                    name="avatar"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    disabled={pendiente}
+                    onChange={(event) => event.currentTarget.form?.requestSubmit()}
+                  />
+                </label>
+
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => cambiarFoto(new FormData())}
+                    disabled={pendiente}
+                    aria-label="Quitar mi foto de perfil"
+                    className="absolute -right-1.5 -top-1.5 rounded-full bg-yuca-coral p-1 text-white"
+                  >
+                    <X size={11} aria-hidden="true" />
+                  </button>
+                )}
+              </form>
+            ) : (
+              <Avatar src={avatarUrl} name={valores.displayName} />
+            )}
+
             <div className="min-w-0">
               <p className="flex flex-wrap items-center gap-1.5 font-display text-lg leading-tight text-yuca-green-deep">
                 {valores.displayName}
@@ -66,6 +113,8 @@ export default function PerfilPublico({
               </p>
             </div>
           </div>
+
+          {avisoFoto && <p className="mb-3 text-sm text-yuca-ink-soft">{avisoFoto}</p>}
 
           {valores.categories.length > 0 && (
             <ul className="mb-3 flex flex-wrap gap-1.5">

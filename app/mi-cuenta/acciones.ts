@@ -6,9 +6,11 @@ import { getUsuarioId } from '@/lib/auth';
 import {
   actualizarDatosPrivados,
   actualizarPerfilPublico,
+  cambiarAvatar,
   crearPerfil,
   perfilPorClerkId,
 } from '@/lib/perfiles';
+import { borrarImagen, explicarSubida, rutaDeUrl, subirImagen } from '@/lib/almacenamiento';
 import {
   agregarCompanero,
   cancelarReserva,
@@ -119,6 +121,56 @@ export async function actualizarPerfilAction(formData: FormData): Promise<Result
   return hecho
     ? { ok: true, mensaje: 'Perfil actualizado.' }
     : { ok: false, mensaje: 'No se pudo actualizar tu perfil.' };
+}
+
+/**
+ * Cambia la foto de perfil, o la quita si no viene archivo.
+ *
+ * Mismo orden que las fotos de producto y por el mismo motivo: primero se sube
+ * el archivo y sólo después se escribe la fila. Al revés, un fallo de subida
+ * dejaría el perfil apuntando a una imagen que no existe, y eso sí se ve.
+ *
+ * La foto anterior se borra después de que la nueva quedó guardada. Borrarla
+ * antes dejaría al perfil sin nada si la subida se cae a medias.
+ */
+export async function cambiarAvatarAction(formData: FormData): Promise<ResultadoAccion> {
+  const clerkUserId = await exigirSesion();
+  const db = requireDb();
+
+  const perfil = await perfilPorClerkId(db, clerkUserId);
+  if (!perfil) return { ok: false, mensaje: 'No tienes perfil de expositor.' };
+
+  const archivo = formData.get('avatar');
+  const quitando = !(archivo instanceof File) || archivo.size === 0;
+
+  let url: string | null = null;
+  if (!quitando) {
+    const subida = await subirImagen(archivo, { carpeta: `avatares/${perfil.id}` });
+    if (!subida.ok) return { ok: false, mensaje: explicarSubida(subida) };
+    url = subida.url;
+  }
+
+  const { ok, anterior } = await cambiarAvatar(db, { exhibitorId: perfil.id, url });
+
+  if (!ok) {
+    if (url) await borrarImagen(rutaDeUrl(url)!);
+    return { ok: false, mensaje: 'No se pudo guardar tu foto.' };
+  }
+
+  if (anterior) {
+    const ruta = rutaDeUrl(anterior);
+    if (ruta) await borrarImagen(ruta);
+  }
+
+  revalidatePath('/mi-cuenta');
+  revalidatePath(`/artistas/${perfil.slug}`);
+  revalidatePath(`/tienda/${perfil.slug}`);
+  revalidatePath('/tienda');
+  revalidatePath('/evento');
+
+  return quitando
+    ? { ok: true, mensaje: 'Foto quitada.' }
+    : { ok: true, mensaje: 'Foto de perfil actualizada.' };
 }
 
 /**

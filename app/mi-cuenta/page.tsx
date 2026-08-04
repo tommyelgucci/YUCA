@@ -98,6 +98,7 @@ export default async function MiCuentaPage() {
             slug={perfil.slug}
             verified={perfil.verified}
             avatarUrl={perfil.avatarUrl}
+            puedeSubirFoto={almacenamientoActivo}
           />
 
           <DatosPrivados

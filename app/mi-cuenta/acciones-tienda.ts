@@ -12,7 +12,7 @@ import {
   publicarProducto,
   quitarFoto,
 } from '@/lib/tienda';
-import { borrarImagen, explicarSubida, subirImagen } from '@/lib/almacenamiento';
+import { borrarImagen, explicarSubida, rutaDeUrl, subirImagen } from '@/lib/almacenamiento';
 import type { ResultadoAccion } from './acciones';
 
 /**
@@ -146,7 +146,7 @@ export async function subirFotoAction(formData: FormData): Promise<ResultadoAcci
     return { ok: false, mensaje: 'Elige una foto.' };
   }
 
-  const subida = await subirImagen(archivo, { productoId });
+  const subida = await subirImagen(archivo, { carpeta: productoId });
   if (!subida.ok) return { ok: false, mensaje: explicarSubida(subida) };
 
   const colgada = await agregarFoto(db, {
@@ -173,8 +173,7 @@ export async function quitarFotoAction(fotoId: string): Promise<ResultadoAccion>
   const url = await quitarFoto(db, { fotoId, exhibitorId: perfil.id });
   if (!url) return { ok: false, mensaje: 'No se pudo quitar esa foto.' };
 
-  // La ruta dentro del bucket es lo que va después de `/public/productos/`.
-  const ruta = url.split('/productos/').pop();
+  const ruta = rutaDeUrl(url);
   if (ruta) await borrarImagen(ruta);
 
   refrescar(perfil.slug);
