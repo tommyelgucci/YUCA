@@ -83,13 +83,10 @@ llamadas HTTP sería pagar mucho por poco. Límite 3 MB, sólo JPG/PNG/WEBP.
 - 3 pruebas nuevas (74 en total): la portada es la primera foto subida, nadie
   cuelga ni quita fotos en producto ajeno, y el borrado en cascada.
 
-⚠️ **Sin probar contra Supabase de verdad.** Desde el entorno de desarrollo de
-Claude las conexiones salientes a Supabase están bloqueadas, así que este código
-está escrito pero no ejercitado contra el servicio. Espera una o dos rondas de
-ajuste la primera vez que se suba una foto.
-
-**Falta de la organización**: crear el bucket `productos` (público) y poner las
-dos variables en `.env.local`.
+✅ **Probado contra Supabase el 2026-08-04**: bucket `productos` creado, las dos
+variables puestas, y la primera foto subió a la primera. El código se había
+escrito a ciegas —desde el entorno de Claude las conexiones salientes a Supabase
+están bloqueadas— y aun así no hizo falta ninguna ronda de ajuste.
 
 ### Dos ajustes de `next.config.mjs` que estaban faltando
 
@@ -104,6 +101,18 @@ Salieron al probar el alta de perfil desde el Codespace:
   contradecía dos cosas ya construidas: el comprobante admite 4 MB y las fotos
   de producto 3. Subido a 5 MB. Nadie lo había notado porque hasta hoy nunca se
   subió un archivo de verdad.
+
+### Deuda anotada: Clerk deprecó `createRouteMatcher`
+
+Al arrancar, Clerk avisa de que `createRouteMatcher` —lo que usa
+`middleware.ts` para exigir sesión en `/admin` y `/mi-cuenta`— desaparecerá en
+su próxima versión mayor, y recomienda comprobar la sesión dentro de cada
+página en vez de por coincidencia de rutas.
+
+Funciona hoy y no corre prisa. Pero **hay que migrarlo antes de actualizar
+Clerk**, o esas dos rutas se quedan sin protección sin que nada falle a la
+vista. Nota aparte: cada Server Action ya comprueba la sesión por su cuenta, así
+que el agujero sería de páginas, no de escrituras.
 
 ### Pendiente inmediato
 
