@@ -25,6 +25,51 @@ presente con el resto de páginas dinámicas.
 "no puedo entrar a evento" del día anterior, que quedó tapado cuando se arregló
 el rol de staff de `/admin` — eran dos fallos distintos con el mismo síntoma.
 
+### Dos fallos en las credenciales que se imprimen
+
+Salieron mirando los `TODO` viejos del repo. Los dos estaban en
+`filasDesdeBase`, el camino que se usa de verdad al exportar — que **no tenía
+ninguna prueba**. Las que había cubren `filasDesdeMocks`, que es lo que alimenta
+la vista previa, y por ahí se colaron los dos.
+
+1. **`nombre_real` salía siempre vacío.** El TODO que lo justificaba
+   (*"columna de datos privados, pendiente de definir"*) se escribió antes de
+   que `full_name` existiera, y al añadirla el 2 de agosto nadie volvió aquí.
+   Los gafetes se habrían impreso sin el nombre legal, que es justo lo que el
+   pliego de la organización pedía. Sigue pudiendo venir vacía si la persona no
+   lo cargó —`/admin` ya la marca en rojo—, pero ya no por olvido del código.
+2. **El filtro de edición se perdía sin dar error.** Había un `&&` de JavaScript
+   donde iba el `and()` de Drizzle. Como `eq()` devuelve un objeto —siempre
+   verdadero—, `A && B` se evaluaba a B: la exportación traía **también las
+   mesas de Druida**, la otra feria. Con dos ediciones sembradas desde el
+   principio, esto habría aparecido recién al imprimir.
+
+`filasDesdeBase` pasa a estar exportada y a recibir la edición, para poder
+probarla. 4 pruebas nuevas contra PGlite (83 en total), y la del filtro se
+comprobó revirtiendo el `&&` a mano: falla, como debe.
+
+### Quien comparte mesa ya existe para la web pública
+
+Estaba anotado desde el 2 de agosto como punto 3 de la referencia de Glitter, y
+era un hueco de verdad: `stand_companions` se llenaba desde `/mi-cuenta`, el
+acompañante tenía que estar **verificado** para poder sumarse, y su credencial
+impresa salía completa desde el 3 de agosto… pero **en la web pública no existía**.
+No salía en el mapa, ni en la lista de participantes, ni su
+`/artistas/[slug]` decía dónde encontrarle. Sólo se publicaba a quien pagó.
+
+- `expositoresDesdeBase` consulta ahora las dos tablas y devuelve **los
+  titulares primero**. Ese orden es el contrato del que se cuelga todo lo demás:
+  cada mesa queda encabezada por quien la reservó.
+- `FeriaContext` pasa de un índice de uno a uno a **una lista por mesa**
+  (`getExpositoresPorStand`). Mientras fue un `Map` de uno a uno, el segundo
+  ocupante simplemente no cabía.
+- La ficha del mapa enseña "Comparte la mesa con" con avatar y enlace al perfil.
+  La etiqueta accesible de la mesa nombra a los dos, no sólo al primero.
+- **Misma regla de siempre para la mesa**: no se anuncia hasta que el pago está
+  confirmado. Se cae para los dos a la vez, así que no hacía falta una regla
+  aparte. Y una reserva cancelada se lleva por delante también al acompañante.
+- 3 pruebas nuevas (79 en total).
+
 ### "Olvidé mi contraseña" se quedaba cargando para siempre
 
 Reportado al probarlo: llega el código al correo, se pone, parece que va a
@@ -368,8 +413,9 @@ ellas — quedan anotadas para cuando se retomen:
    participantes agrupa el plano en sectores (Galería, Teatro, Lobby) con
    leyenda Disponible/Ocupado/Externo, y una misma mesa puede mostrar más de
    un expositor a la vez (ej. "Shooter" y "Guamancita" comparten la C20).
-   Nuestro modelo ya soporta varios expositores por mesa vía acompañantes,
-   pero `StandDetail.tsx` hoy sólo muestra al titular, no a la lista completa.
+   ~~`StandDetail.tsx` sólo muestra al titular.~~ **Hecho** el 2026-08-04, ver
+   arriba. De su versión queda sólo el agrupado por sectores, que aquí es un
+   selector de sala.
 
 ## Hecho (control de edad y público "tiendas" — 2026-08-02)
 

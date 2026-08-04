@@ -1,6 +1,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { getDb, type YucaDb } from '@/db';
-import { exhibitors, reservations, stands as standsTabla } from '@/db/schema';
+import { exhibitors, reservations, standCompanions, stands as standsTabla } from '@/db/schema';
 import { COLUMNAS_PUBLICAS, perfilPublicoPorSlug } from '@/lib/perfiles';
 import { stands as standsMock } from '@/lib/data/feria';
 import { expositores as expositoresMock } from '@/lib/data/expositores';
@@ -86,37 +86,38 @@ export async function standsDesdeBase(db: YucaDb, editionId: string): Promise<St
   });
 }
 
-/**
- * Los expositores que se ven en la web.
- *
- * Sólo salen quienes tienen una reserva **viva** en la edición: quien no apartó
- * mesa todavía no es participante, y quien la dejó vencer deja de serlo. Se
- * seleccionan por `COLUMNAS_PUBLICAS` para que ningún dato personal se escape
- * por esta puerta.
- */
-export async function expositoresDesdeBase(db: YucaDb, editionId: string): Promise<Exhibitor[]> {
-  const filas = await db
-    .select({
-      ...COLUMNAS_PUBLICAS,
-      standCode: standsTabla.code,
-      estado: reservations.status,
-    })
-    .from(reservations)
-    .innerJoin(standsTabla, eq(reservations.standId, standsTabla.id))
-    .innerJoin(exhibitors, eq(reservations.exhibitorId, exhibitors.id))
-    .where(
-      and(
-        eq(standsTabla.editionId, editionId),
-        inArray(reservations.status, ['pendiente', 'confirmada']),
-      ),
-    );
+/** Una fila de `COLUMNAS_PUBLICAS` más de qué mesa viene y en qué estado. */
+interface FilaParticipante {
+  id: string;
+  slug: string;
+  displayName: string;
+  audience: Exhibitor['audience'];
+  categories: string[];
+  verified: boolean;
+  avatarUrl: string | null;
+  bio: string;
+  instagram: string | null;
+  tiktok: string | null;
+  facebook: string | null;
+  web: string | null;
+  standCode: string;
+  estado: string;
+}
 
-  return filas.map((fila) => ({
+/**
+ * De fila a `Exhibitor`.
+ *
+ * Existe porque titulares y acompañantes se consultan por separado —salen de
+ * tablas distintas— pero se publican exactamente igual: para quien mira el
+ * mapa, los dos son gente que va a estar en esa mesa.
+ */
+function comoExpositor(fila: FilaParticipante): Exhibitor {
+  return {
     id: fila.id,
     slug: fila.slug,
     displayName: fila.displayName,
     audience: fila.audience,
-    categories: (fila.categories ?? []) as ArtCategory[],
+    categories: fila.categories as ArtCategory[],
     verified: fila.verified,
     avatar: fila.avatarUrl,
     bio: fila.bio,
@@ -130,7 +131,48 @@ export async function expositoresDesdeBase(db: YucaDb, editionId: string): Promi
     // aún pendiente la persona ya cuenta como participante, pero la mesa
     // todavía se le puede caer y no conviene publicarla.
     standId: fila.estado === 'confirmada' ? fila.standCode : undefined,
-  }));
+  };
+}
+
+/**
+ * Los expositores que se ven en la web.
+ *
+ * Sólo salen quienes tienen una reserva **viva** en la edición: quien no apartó
+ * mesa todavía no es participante, y quien la dejó vencer deja de serlo. Se
+ * seleccionan por `COLUMNAS_PUBLICAS` para que ningún dato personal se escape
+ * por esta puerta.
+ *
+ * **Incluye a los acompañantes de mesa**, no sólo a quien pagó. Una mesa
+ * compartida tiene dos personas detrás y las dos van a estar ahí el día de la
+ * feria; enseñar sólo al titular dejaba a la otra fuera del mapa y de la lista
+ * de participantes, aunque ya estuviera verificada y saliera en las
+ * credenciales impresas. Se devuelven primero los titulares para que cada mesa
+ * se lea encabezada por quien la reservó.
+ */
+export async function expositoresDesdeBase(db: YucaDb, editionId: string): Promise<Exhibitor[]> {
+  const vivas = and(
+    eq(standsTabla.editionId, editionId),
+    inArray(reservations.status, ['pendiente', 'confirmada']),
+  );
+
+  const [titulares, acompanantes] = await Promise.all([
+    db
+      .select({ ...COLUMNAS_PUBLICAS, standCode: standsTabla.code, estado: reservations.status })
+      .from(reservations)
+      .innerJoin(standsTabla, eq(reservations.standId, standsTabla.id))
+      .innerJoin(exhibitors, eq(reservations.exhibitorId, exhibitors.id))
+      .where(vivas),
+
+    db
+      .select({ ...COLUMNAS_PUBLICAS, standCode: standsTabla.code, estado: reservations.status })
+      .from(standCompanions)
+      .innerJoin(reservations, eq(standCompanions.reservationId, reservations.id))
+      .innerJoin(standsTabla, eq(reservations.standId, standsTabla.id))
+      .innerJoin(exhibitors, eq(standCompanions.exhibitorId, exhibitors.id))
+      .where(vivas),
+  ]);
+
+  return [...titulares, ...acompanantes].map(comoExpositor);
 }
 
 export interface VistaFeria {

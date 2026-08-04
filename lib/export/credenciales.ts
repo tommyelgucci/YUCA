@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { exhibitors, reservations, standCompanions, stands, espacios as espaciosTabla } from '@/db/schema';
 import { ZONAS, espaciosPorId, getStand } from '@/lib/data/feria';
@@ -150,8 +150,17 @@ function filasDesdeMocks(): FilaCredencial[] {
   return filas;
 }
 
-/** Filas a partir de la base de datos. */
-async function filasDesdeBase(db: NonNullable<ReturnType<typeof getDb>>): Promise<FilaCredencial[]> {
+/**
+ * Filas a partir de la base de datos.
+ *
+ * Exportada para poder probarla contra PGlite: `filasCredenciales` resuelve la
+ * conexión y la edición por su cuenta, y así este camino —el que de verdad se
+ * imprime— quedaba sin una sola prueba.
+ */
+export async function filasDesdeBase(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  editionId: string = edicionActual.id,
+): Promise<FilaCredencial[]> {
   // Sólo entran las mesas con reserva viva: quien no pagó ni apartó no imprime.
   const reservas = await db
     .select({
@@ -164,6 +173,7 @@ async function filasDesdeBase(db: NonNullable<ReturnType<typeof getDb>>): Promis
       kind: stands.kind,
       espacio: espaciosTabla.name,
       nombreArtistico: exhibitors.displayName,
+      nombreReal: exhibitors.fullName,
       slug: exhibitors.slug,
       categorias: exhibitors.categories,
       instagram: exhibitors.instagram,
@@ -173,9 +183,17 @@ async function filasDesdeBase(db: NonNullable<ReturnType<typeof getDb>>): Promis
     .innerJoin(stands, eq(reservations.standId, stands.id))
     .innerJoin(espaciosTabla, eq(stands.espacioId, espaciosTabla.id))
     .innerJoin(exhibitors, eq(reservations.exhibitorId, exhibitors.id))
+    /*
+     * Aquí había un `&&` de JavaScript en vez del `and()` de Drizzle. Como
+     * `eq()` devuelve un objeto —siempre verdadero—, `A && B` se evaluaba a B y
+     * la condición de la edición **se perdía sin dar ningún error**: la
+     * exportación traía también las mesas de la otra feria (Druida).
+     */
     .where(
-      eq(stands.editionId, edicionActual.id) &&
+      and(
+        eq(stands.editionId, editionId),
         inArray(reservations.status, ['pendiente', 'confirmada']),
+      ),
     );
 
   // El acompañante es un expositor registrado, así que su credencial sale
@@ -187,6 +205,7 @@ async function filasDesdeBase(db: NonNullable<ReturnType<typeof getDb>>): Promis
         .select({
           reservationId: standCompanions.reservationId,
           displayName: standCompanions.displayName,
+          nombreReal: exhibitors.fullName,
           slug: exhibitors.slug,
           categorias: exhibitors.categories,
           instagram: exhibitors.instagram,
@@ -215,7 +234,14 @@ async function filasDesdeBase(db: NonNullable<ReturnType<typeof getDb>>): Promis
       ...comun,
       credencial_id: `${reserva.standCode}-1`,
       nombre_artistico: reserva.nombreArtistico,
-      nombre_real: '', // TODO: columna de datos privados, pendiente de definir
+      /*
+       * Sale de `full_name`, que existe desde el 2 de agosto. Hasta ahora esta
+       * columna se exportaba **siempre vacía**: el TODO que había aquí se
+       * escribió antes de que la columna existiera y nadie lo revisó después.
+       * Sigue pudiendo venir vacía —el dato es opcional y `/admin` marca en
+       * rojo a quien no lo cargó—, pero ya no por olvido del código.
+       */
+      nombre_real: reserva.nombreReal ?? '',
       rol: 'Titular',
       categorias: (reserva.categorias ?? []).join(', '),
       instagram: reserva.instagram ?? '',
@@ -231,7 +257,7 @@ async function filasDesdeBase(db: NonNullable<ReturnType<typeof getDb>>): Promis
           ...comun,
           credencial_id: `${reserva.standCode}-${i + 2}`,
           nombre_artistico: companero.displayName,
-          nombre_real: '',
+          nombre_real: companero.nombreReal ?? '',
           rol: 'Compañero',
           categorias: (companero.categorias ?? []).join(', '),
           instagram: companero.instagram ?? '',

@@ -57,16 +57,28 @@ export function useFeria() {
 
   return useMemo(() => {
     const porId = new Map(feria.stands.map((stand) => [stand.id, stand]));
-    const porStand = new Map(
-      feria.expositores
-        .filter((expositor) => expositor.standId)
-        .map((expositor) => [expositor.standId!, expositor]),
-    );
+
+    /*
+     * Una mesa puede tener más de un ocupante: quien la reservó y a quien haya
+     * invitado a compartirla. Antes esto era un `Map` de uno a uno y el segundo
+     * simplemente no existía para el mapa.
+     *
+     * El orden de `feria.expositores` importa: los titulares vienen primero
+     * (ver `lib/feria.ts`), así que cada mesa queda encabezada por quien pagó.
+     */
+    const porStand = new Map<string, Exhibitor[]>();
+    for (const expositor of feria.expositores) {
+      if (!expositor.standId) continue;
+      const ocupantes = porStand.get(expositor.standId);
+      if (ocupantes) ocupantes.push(expositor);
+      else porStand.set(expositor.standId, [expositor]);
+    }
 
     return {
       ...feria,
       getStand: (id: string | null | undefined) => (id ? porId.get(id) : undefined),
-      getExpositorPorStand: (id: string | null | undefined) => (id ? porStand.get(id) : undefined),
+      getExpositoresPorStand: (id: string | null | undefined) =>
+        (id ? porStand.get(id) : undefined) ?? [],
       standsDeEspacio: (espacioId: Stand['espacioId']) =>
         feria.stands.filter((stand) => stand.espacioId === espacioId),
     };
