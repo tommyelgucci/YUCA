@@ -91,6 +91,20 @@ ajuste la primera vez que se suba una foto.
 **Falta de la organización**: crear el bucket `productos` (público) y poner las
 dos variables en `.env.local`.
 
+### Dos ajustes de `next.config.mjs` que estaban faltando
+
+Salieron al probar el alta de perfil desde el Codespace:
+
+- **`serverActions.allowedOrigins`** — Next.js rechaza una Server Action cuando
+  el `Origin` no coincide con su `Host`. Detrás de un proxy (Codespaces, o
+  cualquier túnel) nunca coinciden, y **todos los formularios morían** con
+  `Invalid Server Actions request`. Se listan los dominios de confianza; en
+  producción no hace falta añadir el propio, ahí sí coinciden.
+- **`serverActions.bodySizeLimit`** — el tope por defecto es **1 MB**, y eso
+  contradecía dos cosas ya construidas: el comprobante admite 4 MB y las fotos
+  de producto 3. Subido a 5 MB. Nadie lo había notado porque hasta hoy nunca se
+  subió un archivo de verdad.
+
 ### Pendiente inmediato
 
 - **Los 18 expositores sembrados son de mentira** (Estudio Lunaria, Papaya
