@@ -52,9 +52,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `/admin` —que el middleware protege— cerrar sesión parece no hacer
           nada: la página rebota contra la protección y vuelve a pedir
           identificarse.
+
+          `taskUrls` dice dónde vive cada pantalla de "tarea pendiente". Clerk
+          las usa cuando la sesión queda a medias: al recuperar la contraseña,
+          verificar el código no termina de entrar, deja la sesión en estado
+          pendiente con la tarea de poner la contraseña nueva. Sin esta opción
+          Clerk no sabe a dónde llevar a esa persona y se queda cargando para
+          siempre — su propio código lo avisa por consola: *"Session has pending
+          tasks but no handling is configured […] users may get stuck on
+          incomplete flows"*.
         */}
         {authEnabled ? (
-          <ClerkProvider afterSignOutUrl="/">
+          <ClerkProvider
+            afterSignOutUrl="/"
+            taskUrls={{ 'reset-password': '/nueva-contrasena' }}
+          >
             <SiteChrome>{children}</SiteChrome>
           </ClerkProvider>
         ) : (

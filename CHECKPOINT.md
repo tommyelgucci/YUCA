@@ -25,6 +25,32 @@ presente con el resto de páginas dinámicas.
 "no puedo entrar a evento" del día anterior, que quedó tapado cuando se arregló
 el rol de staff de `/admin` — eran dos fallos distintos con el mismo síntoma.
 
+### "Olvidé mi contraseña" se quedaba cargando para siempre
+
+Reportado al probarlo: llega el código al correo, se pone, parece que va a
+entrar y se queda girando sin avanzar ni dejar cancelar.
+
+**No era código nuestro, era configuración que faltaba.** Verificar ese código
+**no termina de entrar**: deja la sesión en estado *pendiente*, con la tarea
+`reset-password` —elegir contraseña nueva— sin resolver. Clerk lleva entonces a
+esa persona a la dirección que se le indique en `taskUrls`; sin indicarle
+ninguna, no tiene a dónde llevarla. Su propio código lo avisa por consola:
+*"Session has pending tasks but no handling is configured […] users may get
+stuck on incomplete flows"* (`@clerk/shared/…/sessionTasks.js`).
+
+- `taskUrls` en `<ClerkProvider>` apunta esa tarea a `/nueva-contrasena`, una
+  ruta comodín nueva que monta `<TaskResetPassword>`.
+- **`redirectUrlComplete` es obligatorio** y va a `/mi-cuenta`: sin destino, la
+  tarea se completa y nadie se mueve de la pantalla.
+- **Esa ruta no se puede proteger con el middleware.** Una sesión pendiente
+  cuenta como no identificada, así que `auth.protect()` la mandaría a iniciar
+  sesión y Clerk la devolvería aquí: ese es el bucle. Tenerlo presente si algún
+  día se amplía `rutasProtegidas`.
+
+Encontrado leyendo el paquete instalado, **no reproducido**: desde el entorno de
+Claude no hay claves de Clerk y las conexiones salientes están bloqueadas. Falta
+confirmarlo rehaciendo el "olvidé mi contraseña".
+
 ### Foto de perfil (el último pendiente de la referencia de Glitter)
 
 `avatar_url` existía en la tabla desde el principio y **nada la escribía**: todos
