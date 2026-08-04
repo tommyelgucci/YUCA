@@ -19,7 +19,15 @@
 const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const CLAVE_SERVICIO = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-/** Bucket público donde viven las fotos de producto. */
+/**
+ * Bucket público donde viven todas las imágenes que sube la gente.
+ *
+ * Se llama `productos` porque nació con el catálogo, y ahí siguen también los
+ * avatares (bajo `avatares/`). Separarlos en dos buckets sería más ordenado de
+ * leer, pero obliga a alguien a entrar al panel de Supabase a crear el segundo
+ * —y hasta que lo hiciera, el botón de subir foto estaría en pantalla
+ * fallando—. El orden interno no vale ese precio.
+ */
 const BUCKET = 'productos';
 
 /** 3 MB. Una foto de producto bien hecha pesa mucho menos. */
@@ -47,13 +55,13 @@ export type ResultadoSubida =
 /**
  * Sube una imagen y devuelve su URL pública.
  *
- * La ruta lleva el id del producto y un sufijo al azar: dos fotos del mismo
- * producto no pueden pisarse, y el nombre original del archivo no se usa
- * porque suele traer tildes, espacios y a veces el nombre de quien la hizo.
+ * Dentro de la carpeta el nombre es un sufijo al azar: dos fotos de lo mismo no
+ * pueden pisarse, y el nombre original del archivo no se usa porque suele traer
+ * tildes, espacios y a veces el nombre de quien la hizo.
  */
 export async function subirImagen(
   archivo: File,
-  params: { productoId: string },
+  params: { carpeta: string },
 ): Promise<ResultadoSubida> {
   if (!URL_SUPABASE || !CLAVE_SERVICIO) return { ok: false, motivo: 'sin-configurar' };
 
@@ -61,7 +69,7 @@ export async function subirImagen(
   if (!extension) return { ok: false, motivo: 'tipo' };
   if (archivo.size > MAX_BYTES) return { ok: false, motivo: 'peso' };
 
-  const ruta = `${params.productoId}/${crypto.randomUUID()}.${extension}`;
+  const ruta = `${params.carpeta}/${crypto.randomUUID()}.${extension}`;
 
   const respuesta = await fetch(`${URL_SUPABASE}/storage/v1/object/${BUCKET}/${ruta}`, {
     method: 'POST',
@@ -100,6 +108,23 @@ export async function borrarImagen(ruta: string): Promise<void> {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${CLAVE_SERVICIO}` },
   }).catch(() => undefined);
+}
+
+/**
+ * La ruta dentro del bucket a partir de la URL pública guardada en la base.
+ *
+ * Se guarda la URL entera y no la ruta porque es lo que consume la web; para
+ * borrar hace falta el camino de vuelta, y saber por dónde cortarlo es
+ * justamente lo que este módulo tiene que saber y nadie más.
+ *
+ * Devuelve `null` si la URL no es de este bucket —una sembrada a mano, por
+ * ejemplo—: entonces no hay nada que borrar.
+ */
+export function rutaDeUrl(url: string): string | null {
+  const marca = `/object/public/${BUCKET}/`;
+  const corte = url.indexOf(marca);
+
+  return corte === -1 ? null : url.slice(corte + marca.length);
 }
 
 /** Traduce el fallo a algo que se pueda leer sin saber qué es un bucket. */

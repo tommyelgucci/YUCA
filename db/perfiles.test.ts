@@ -8,12 +8,14 @@ import type { YucaDb } from './index';
 import {
   actualizarDatosPrivados,
   actualizarPerfilPublico,
+  cambiarAvatar,
   crearPerfil,
   marcarVerificado,
   perfilesPorVerificar,
   perfilPorClerkId,
   perfilPublicoPorSlug,
 } from '../lib/perfiles';
+import { rutaDeUrl } from '../lib/almacenamiento';
 
 /**
  * Pruebas del alta de perfil de expositor y su verificación por el staff.
@@ -282,4 +284,41 @@ test('el staff verifica un perfil y deja de aparecer en la cola', async () => {
 
   const despues = await perfilesPorVerificar(db);
   assert.equal(despues.length, 0);
+});
+
+test('cambiar la foto de perfil devuelve la anterior, para poder borrarla', async () => {
+  const { db } = await baseDePrueba();
+
+  await crearPerfil(db, {
+    clerkUserId: 'user_ana',
+    displayName: 'Estudio Lunaria',
+    audience: 'artistas',
+    categories: [],
+    bio: '',
+  });
+  const perfil = (await perfilPorClerkId(db, 'user_ana'))!;
+
+  // La primera vez no hay nada que borrar.
+  const primera = await cambiarAvatar(db, { exhibitorId: perfil.id, url: 'https://x/uno.jpg' });
+  assert.equal(primera.ok, true);
+  assert.equal(primera.anterior, null);
+
+  // La segunda devuelve la primera: ese archivo ya no lo usa nadie.
+  const segunda = await cambiarAvatar(db, { exhibitorId: perfil.id, url: 'https://x/dos.jpg' });
+  assert.equal(segunda.anterior, 'https://x/uno.jpg');
+  assert.equal((await perfilPublicoPorSlug(db, perfil.slug))?.avatarUrl, 'https://x/dos.jpg');
+
+  // Quitarla la deja en null, y también devuelve la que había.
+  const quitada = await cambiarAvatar(db, { exhibitorId: perfil.id, url: null });
+  assert.equal(quitada.anterior, 'https://x/dos.jpg');
+  assert.equal((await perfilPublicoPorSlug(db, perfil.slug))?.avatarUrl, null);
+});
+
+test('la ruta dentro del bucket se recupera de la URL pública', () => {
+  const publica =
+    'https://proyecto.supabase.co/storage/v1/object/public/productos/avatares/abc/foto.jpg';
+  assert.equal(rutaDeUrl(publica), 'avatares/abc/foto.jpg');
+
+  // Un avatar sembrado a mano no vive en el bucket: no hay nada que borrar.
+  assert.equal(rutaDeUrl('https://images.unsplash.com/photo-123'), null);
 });

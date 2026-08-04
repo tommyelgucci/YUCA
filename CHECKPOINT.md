@@ -5,6 +5,64 @@ al final de una fase.
 
 ## Última actualización
 
+**2026-08-04** — dos cosas que estaban esperando a que el almacenamiento
+funcionara de verdad, más un fallo que tumbaba `/evento`.
+
+### `/evento` estaba caída (arreglado)
+
+`app/evento/page.tsx` corre en el servidor y montaba directamente
+`FeriaContext.Provider`, reexportado desde un módulo `'use client'`. Al cruzar
+esa frontera cada export se convierte en una referencia al cliente, y un
+contexto no es un componente: la página moría con *"Element type is invalid.
+Received a promise that resolves to: Context"*. Ahora el proveedor es una
+función de verdad que envuelve al contexto.
+
+**No lo pilló el build**: `/evento` es `force-dynamic`, así que `npm run build`
+no la prerrenderiza y el fallo sólo aparecía al abrirla. Conviene tenerlo
+presente con el resto de páginas dinámicas.
+
+### Foto de perfil (el último pendiente de la referencia de Glitter)
+
+`avatar_url` existía en la tabla desde el principio y **nada la escribía**: todos
+los perfiles salían con iniciales. Estaba bloqueado por la decisión de
+almacenamiento, que ya está tomada y probada.
+
+- Se sube desde `/mi-cuenta` con el botón de cámara sobre el avatar, y se guarda
+  sola al elegir el archivo. No está dentro del formulario de perfil a propósito:
+  ahí obligaría a subir la imagen antes de saber si el resto de campos valen.
+- **`cambiarAvatar` devuelve la foto anterior** para poder borrarla del bucket.
+  Sin eso, cambiar de foto cinco veces deja cuatro archivos que nadie va a mirar.
+  La anterior se borra *después* de guardar la nueva; al revés, un fallo a medias
+  dejaría el perfil sin foto.
+- **Los avatares van al mismo bucket `productos`**, bajo `avatares/`. Dos buckets
+  sería más ordenado de leer, pero obliga a alguien a entrar al panel de Supabase
+  a crear el segundo, y hasta entonces el botón estaría en pantalla fallando.
+- `subirImagen` pasa a recibir una `carpeta` en vez de un `productoId`, y
+  `rutaDeUrl()` centraliza el camino de vuelta de URL pública a ruta del bucket
+  (antes era un `split('/productos/')` suelto en una acción).
+- 2 pruebas nuevas (76 en total).
+
+### `npm run db:limpiar-demo`
+
+Los 18 expositores sembrados llevaban desde el 3 de agosto anotados como
+pendiente inmediato: ocupan mesas en el mapa y saldrían impresos en las
+credenciales junto a los reales. `db:seed` no sirve para esto —vacía las tablas
+enteras y ya se niega a correr—, así que hace falta algo quirúrgico.
+
+- Se lleva sólo a quien tiene `clerk_user_id` empezando por `seed_`, que es la
+  misma marca que usa el freno de mano de `db:seed`. Lo que cuelga de ellos
+  —reservas, acompañantes, productos, fotos, reseñas— se va por la clave foránea.
+- **Por defecto no borra**: enseña qué se llevaría. Hay que añadir `-- --si`.
+  Se corre pegando un comando, muchas veces desde el teléfono.
+- **Libera las mesas.** El estado de la mesa no lo mantiene la base sino
+  `lib/reservas.ts`, así que la cascada borraba la reserva y dejaba la mesa
+  marcada como ocupada **para siempre**, fuera del selector sin que nadie la
+  tuviera. Sólo se liberan las que quedan sin ninguna reserva viva: una mesa que
+  pasó por una reserva de mentira y ahora tiene una real no se toca.
+- Salió del banco de pruebas, no de la lectura: probado contra PGlite con las dos
+  situaciones mezcladas.
+
+
 **2026-08-03 (noche)** — **la base de datos existe y está viva.** Supabase
 `yuca` (São Paulo, Data API apagada), 11 tablas, 6 de 6 migraciones aplicadas y
 sembrada: 2 ediciones, 2 espacios, 54 mesas, 18 expositores de demostración, 18
@@ -118,7 +176,8 @@ que el agujero sería de páginas, no de escrituras.
 
 - **Los 18 expositores sembrados son de mentira** (Estudio Lunaria, Papaya
   Comics…). Hay que borrarlos antes de abrir la convocatoria real, o se
-  mezclarán con los de verdad en el mapa y en las credenciales.
+  mezclarán con los de verdad en el mapa y en las credenciales. **Ya hay
+  comando**: `npm run db:limpiar-demo` (ver arriba); falta correrlo.
 
 **2026-08-03** — dos bloques: aceptación de las reglas antes de reservar, y el
 acompañante como expositor verificado. Con eso quedan **cuatro** huecos del
@@ -258,11 +317,9 @@ boliviano) como referencia de diseño, sin construir nada todavía a partir de
 ellas — quedan anotadas para cuando se retomen:
 
 1. ~~**Perfil con datos públicos y privados separados.**~~ **Hecho** el
-   2026-08-02, ver la sección de arriba. Queda pendiente de su versión sólo el
-   avatar subido por la persona (hoy `avatar_url` existe en la tabla pero nada
-   lo escribe: necesita la misma decisión de almacenamiento que el
-   comprobante) y el botón de agregar/quitar redes de a una, que aquí es un
-   campo fijo por red.
+   2026-08-02, ver la sección de arriba. ~~El avatar subido por la persona~~
+   **hecho** el 2026-08-04, en cuanto se resolvió el almacenamiento. Queda sólo
+   el botón de agregar/quitar redes de a una, que aquí es un campo fijo por red.
 2. **Cacería de Sellos, spec de referencia para la Fase 3.** Su versión: se
    compra un "Pasaporte" (Bs, en su stand), se junta un sello físico (propio,
    máximo 5 cm de diámetro) por cada stand visitado, tope de 50 inscritos a
