@@ -25,6 +25,29 @@ presente con el resto de páginas dinámicas.
 "no puedo entrar a evento" del día anterior, que quedó tapado cuando se arregló
 el rol de staff de `/admin` — eran dos fallos distintos con el mismo síntoma.
 
+### Dos fallos en las credenciales que se imprimen
+
+Salieron mirando los `TODO` viejos del repo. Los dos estaban en
+`filasDesdeBase`, el camino que se usa de verdad al exportar — que **no tenía
+ninguna prueba**. Las que había cubren `filasDesdeMocks`, que es lo que alimenta
+la vista previa, y por ahí se colaron los dos.
+
+1. **`nombre_real` salía siempre vacío.** El TODO que lo justificaba
+   (*"columna de datos privados, pendiente de definir"*) se escribió antes de
+   que `full_name` existiera, y al añadirla el 2 de agosto nadie volvió aquí.
+   Los gafetes se habrían impreso sin el nombre legal, que es justo lo que el
+   pliego de la organización pedía. Sigue pudiendo venir vacía si la persona no
+   lo cargó —`/admin` ya la marca en rojo—, pero ya no por olvido del código.
+2. **El filtro de edición se perdía sin dar error.** Había un `&&` de JavaScript
+   donde iba el `and()` de Drizzle. Como `eq()` devuelve un objeto —siempre
+   verdadero—, `A && B` se evaluaba a B: la exportación traía **también las
+   mesas de Druida**, la otra feria. Con dos ediciones sembradas desde el
+   principio, esto habría aparecido recién al imprimir.
+
+`filasDesdeBase` pasa a estar exportada y a recibir la edición, para poder
+probarla. 4 pruebas nuevas contra PGlite (83 en total), y la del filtro se
+comprobó revirtiendo el `&&` a mano: falla, como debe.
+
 ### Quien comparte mesa ya existe para la web pública
 
 Estaba anotado desde el 2 de agosto como punto 3 de la referencia de Glitter, y
