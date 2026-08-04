@@ -83,13 +83,10 @@ llamadas HTTP sería pagar mucho por poco. Límite 3 MB, sólo JPG/PNG/WEBP.
 - 3 pruebas nuevas (74 en total): la portada es la primera foto subida, nadie
   cuelga ni quita fotos en producto ajeno, y el borrado en cascada.
 
-⚠️ **Sin probar contra Supabase de verdad.** Desde el entorno de desarrollo de
-Claude las conexiones salientes a Supabase están bloqueadas, así que este código
-está escrito pero no ejercitado contra el servicio. Espera una o dos rondas de
-ajuste la primera vez que se suba una foto.
-
-**Falta de la organización**: crear el bucket `productos` (público) y poner las
-dos variables en `.env.local`.
+✅ **Probado contra Supabase el 2026-08-04**: bucket `productos` creado, las dos
+variables puestas, y la primera foto subió a la primera. El código se había
+escrito a ciegas —desde el entorno de Claude las conexiones salientes a Supabase
+están bloqueadas— y aun así no hizo falta ninguna ronda de ajuste.
 
 ### Dos ajustes de `next.config.mjs` que estaban faltando
 
