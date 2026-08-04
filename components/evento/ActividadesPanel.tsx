@@ -1,7 +1,11 @@
-import { CalendarClock, Check, MapPin, Ticket } from 'lucide-react';
-import { actividades } from '@/lib/data/actividades';
+'use client';
+
+import { useState, useTransition } from 'react';
+import Link from 'next/link';
+import { CalendarClock, Check, MapPin, Ticket, X } from 'lucide-react';
 import { isSoldOut, remainingSlots, type Activity } from '@/lib/types';
 import ImageFrame from '@/components/ui/ImageFrame';
+import { cancelarInscripcionAction, inscribirseAction } from '@/app/evento/acciones';
 
 const TONO: Record<Activity['kind'], 'green' | 'coral' | 'mustard' | 'rose'> = {
   'stamp-rally': 'mustard',
@@ -48,11 +52,33 @@ function Cupos({ actividad }: { actividad: Activity }) {
   );
 }
 
-export default function ActividadesPanel() {
+export default function ActividadesPanel({
+  actividades,
+  misInscripciones,
+  sePuedeInscribir,
+  haySesion,
+}: {
+  actividades: Activity[];
+  /** Ids de las actividades en las que ya tiene cupo quien está mirando. */
+  misInscripciones: string[];
+  /** Falso con datos de demostración: no hay dónde guardar la inscripción. */
+  sePuedeInscribir: boolean;
+  haySesion: boolean;
+}) {
+  const [pendiente, startTransition] = useTransition();
+  const [aviso, setAviso] = useState<{ id: string; texto: string } | null>(null);
+
+  const correr = (id: string, accion: () => Promise<{ mensaje: string }>) =>
+    startTransition(async () => {
+      setAviso({ id, texto: (await accion()).mensaje });
+    });
+
   return (
     <ul className="grid gap-5 sm:grid-cols-2">
       {actividades.map((actividad) => {
-        const agotada = isSoldOut(actividad);
+        const inscrito = misInscripciones.includes(actividad.id);
+        // Quien ya tiene su cupo no ve "agotada": lo suyo está guardado.
+        const agotada = isSoldOut(actividad) && !inscrito;
 
         return (
           <li key={actividad.id}>
@@ -103,14 +129,50 @@ export default function ActividadesPanel() {
                 <div className="mt-auto flex flex-col gap-3">
                   <Cupos actividad={actividad} />
 
-                  <button
-                    type="button"
-                    disabled={agotada}
-                    className={agotada ? 'btn-outline btn-md w-full' : 'btn-secondary btn-md w-full'}
-                  >
-                    <Ticket size={16} aria-hidden="true" />
-                    {agotada ? 'Sin cupos' : 'Quiero inscribirme'}
-                  </button>
+                  {/*
+                    Sin base detrás no se ofrece el botón, igual que no se
+                    ofrece subir fotos sin almacenamiento: prometer una
+                    inscripción que no se va a guardar en ningún sitio es peor
+                    que decir que todavía no se puede.
+                  */}
+                  {!sePuedeInscribir ? (
+                    <p className="text-center text-xs text-yuca-ink-soft">
+                      Las inscripciones abren cuando se confirme el programa.
+                    </p>
+                  ) : !haySesion ? (
+                    <Link href="/iniciar-sesion" className="btn-outline btn-md w-full">
+                      <Ticket size={16} aria-hidden="true" />
+                      Entra para inscribirte
+                    </Link>
+                  ) : inscrito ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        correr(actividad.id, () => cancelarInscripcionAction(actividad.id))
+                      }
+                      disabled={pendiente}
+                      className="btn-outline btn-md w-full"
+                    >
+                      <X size={16} aria-hidden="true" />
+                      {pendiente ? 'Liberando…' : 'Ya tienes cupo · soltarlo'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => correr(actividad.id, () => inscribirseAction(actividad.id))}
+                      disabled={agotada || pendiente}
+                      className={
+                        agotada ? 'btn-outline btn-md w-full' : 'btn-secondary btn-md w-full'
+                      }
+                    >
+                      <Ticket size={16} aria-hidden="true" />
+                      {agotada ? 'Sin cupos' : pendiente ? 'Apuntando…' : 'Quiero inscribirme'}
+                    </button>
+                  )}
+
+                  {aviso?.id === actividad.id && (
+                    <p className="text-center text-sm text-yuca-ink-soft">{aviso.texto}</p>
+                  )}
                 </div>
               </div>
             </article>

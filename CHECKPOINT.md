@@ -25,6 +25,39 @@ presente con el resto de páginas dinámicas.
 "no puedo entrar a evento" del día anterior, que quedó tapado cuando se arregló
 el rol de staff de `/admin` — eran dos fallos distintos con el mismo síntoma.
 
+### Inscripción a actividades con cupos de verdad
+
+Mismo patrón que el avatar: `activity_registrations` estaba en el esquema desde
+el primer día y **nadie escribía en ella**. Las actividades se enseñaban con
+cupos inventados y el botón de "quiero inscribirme" no hacía nada; las
+inscripciones se llevaban por Instagram a mano.
+
+- **`lib/actividades.ts`**: inscribirse, darse de baja, y el conteo real.
+- **El cupo se impone bloqueando la fila de la actividad** (`for update`) y
+  contando dentro de la transacción, igual que en `lib/reservas.ts`. Un cupo no
+  se puede imponer con un índice único como se hace con las mesas: es un
+  **conteo**, no un valor repetido, y no hay índice que cuente.
+- **Los inscritos no se guardan en un contador.** Una columna con el total es un
+  dato duplicado que algún día no coincide con las filas que dice contar; son
+  cuatro actividades, no cuarenta mil.
+- **Darse de baja borra la fila** en vez de marcarla: una inscripción cancelada
+  no es historial que nadie vaya a consultar, y dejarla obligaría a excluirla en
+  cada conteo de cupos — justo donde un olvido se paga caro.
+- **El nombre sale de la cuenta**, como en las reseñas: esa lista la lee alguien
+  del equipo en la puerta para dejar pasar, y un nombre escrito a mano no
+  identifica a nadie.
+- Sin base configurada **no se ofrece el botón**, igual que no se ofrece subir
+  fotos sin almacenamiento.
+- 9 pruebas nuevas (92 en total).
+
+⚠️ **Lo que esa prueba de carrera no demuestra.** PGlite corre sobre una sola
+conexión, así que dos transacciones simultáneas se ejecutan una detrás de otra
+pase lo que pase: quitando el `for update`, la prueba sigue en verde — se
+comprobó. Verifica que la cuenta es correcta, no que el bloqueo funcione. El
+bloqueo es una garantía real de Postgres y protege en Supabase, donde sí hay
+muchas conexiones; simplemente este banco de pruebas no puede ejercitarlo. Vale
+para toda prueba de concurrencia del repo que no se apoye en un índice único.
+
 ### El linter no estaba deprecado: no existía
 
 `npm run lint` llamaba a `next lint`, que **no encontraba ninguna configuración
@@ -855,7 +888,8 @@ yo hubiera supuesto. Marcado contra lo que ya existe:
 
 ## Fase 3 (después de cerrar la 2)
 
-- Inscripción a actividades con control de cupos real (hoy sólo se muestran).
+- ~~Inscripción a actividades con control de cupos real (hoy sólo se muestran).~~
+  **Hecho** el 2026-08-04, ver arriba.
 - Cacería de Sellos con QR — debe tolerar mala señal dentro del salón (offline-
   first o cola de reintentos, a decidir). Ver referencia de Glitter arriba.
 

@@ -6,6 +6,7 @@ import { CalendarHeart, Info, Users } from 'lucide-react';
 import InfoPanel from './InfoPanel';
 import ParticipantesPanel from './ParticipantesPanel';
 import ActividadesPanel from './ActividadesPanel';
+import type { ComponentProps } from 'react';
 
 const PESTANAS = [
   { value: 'info', label: 'Info', Icon: Info },
@@ -15,14 +16,20 @@ const PESTANAS = [
 
 type Pestana = (typeof PESTANAS)[number]['value'];
 
+type PropsActividades = ComponentProps<typeof ActividadesPanel>;
+
 /**
  * Pestañas de la vista de evento.
  *
  * Radix aporta el patrón ARIA completo (roles, flechas del teclado, foco).
  * La pestaña activa se refleja en la URL para poder enlazar directo a
  * `/evento?tab=participantes&stand=C20`.
+ *
+ * Las actividades bajan por props y no por contexto —al revés que la feria—
+ * porque las consume un solo panel. Un contexto tiene sentido cuando el dato
+ * cruza varios niveles; aquí sólo tendría que atravesar éste.
  */
-export default function EventTabs() {
+export default function EventTabs({ actividades }: { actividades: PropsActividades }) {
   const [tab, setTab] = useState<Pestana>('info');
 
   /*
@@ -76,7 +83,7 @@ export default function EventTabs() {
       </Tabs.Content>
 
       <Tabs.Content value="actividades" className="outline-none">
-        <ActividadesPanel />
+        <ActividadesPanel {...actividades} />
       </Tabs.Content>
     </Tabs.Root>
   );
