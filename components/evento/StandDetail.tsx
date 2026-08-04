@@ -26,11 +26,12 @@ export default function StandDetail({
   onClose: () => void;
 }) {
   const { reduce, transition } = useMotionPresets();
-  const { getStand, getExpositorPorStand } = useFeria();
+  const { getStand, getExpositoresPorStand } = useFeria();
   const mesa = ctaMesa();
 
   const stand = getStand(standId);
-  const expositor = getExpositorPorStand(standId);
+  // Quien reservó encabeza; detrás, quien comparta la mesa con esa persona.
+  const [expositor, ...comparten] = getExpositoresPorStand(standId);
   const espacio = stand ? espaciosPorId.get(stand.espacioId) : undefined;
   const precio = stand ? precioActual(stand.kind) : null;
 
@@ -90,6 +91,42 @@ export default function StandDetail({
               </ul>
 
               <p className="mb-4 text-sm leading-relaxed text-yuca-ink-soft">{expositor.bio}</p>
+
+              {/*
+                Una mesa la pueden compartir dos personas. Se enseñan las dos:
+                quien busca a alguien en la feria necesita saber en qué mesa
+                está, y esconder a quien no pagó la reserva la volvía invisible
+                en el mapa aunque estuviera ahí sentada todo el día.
+              */}
+              {comparten.length > 0 && (
+                <div className="mb-4 border-t border-yuca-green/10 pt-3">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-yuca-ink-soft">
+                    {comparten.length === 1 ? 'Comparte la mesa con' : 'Comparten la mesa'}
+                  </p>
+                  <ul className="flex flex-col gap-2">
+                    {comparten.map((acompanante) => (
+                      <li key={acompanante.id}>
+                        <Link
+                          href={`/artistas/${acompanante.slug}`}
+                          className="group flex items-center gap-2.5"
+                        >
+                          <Avatar
+                            src={acompanante.avatar}
+                            name={acompanante.displayName}
+                            size="sm"
+                          />
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="truncate text-sm font-bold text-yuca-ink group-hover:underline">
+                              {acompanante.displayName}
+                            </span>
+                            {acompanante.verified && <VerifiedBadge />}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <ExpositorSocials socials={expositor.socials} name={expositor.displayName} size="sm" />

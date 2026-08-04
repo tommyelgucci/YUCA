@@ -7,7 +7,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import * as schema from './schema';
 import type { YucaDb } from './index';
 import { expositoresDesdeBase, standsDesdeBase } from '../lib/feria';
-import { reservarStand, confirmarPago, cancelarReserva } from '../lib/reservas';
+import { reservarStand, confirmarPago, cancelarReserva, agregarCompanero } from '../lib/reservas';
 import { stands as standsMock } from '../lib/data/feria';
 
 /**
@@ -181,4 +181,108 @@ test('un expositor sin reserva no aparece en la lista', async () => {
     (await db.select().from(schema.exhibitors).where(eq(schema.exhibitors.slug, 'beto'))).length,
     1,
   );
+});
+
+test('quien comparte la mesa también sale como participante, detrás del titular', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  const [beto] = await db
+    .insert(schema.exhibitors)
+    .values({
+      clerkUserId: 'user_beto',
+      slug: 'beto',
+      displayName: 'Beto',
+      // El acompañante tiene que estar verificado para poder sumarse.
+      verified: true,
+    })
+    .returning({ id: schema.exhibitors.id });
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: PRIMERA.id,
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  assert.equal(reserva.ok, true);
+  if (!reserva.ok) return;
+
+  await confirmarPago(db, { reservationId: reserva.reservationId, staffUserId: 'user_staff' });
+  const sumado = await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    slug: 'beto',
+  });
+  assert.equal(sumado.ok, true);
+
+  const expositores = await expositoresDesdeBase(db, EDICION);
+
+  // Los dos están en la misma mesa, y quien la reservó va primero: el mapa se
+  // apoya en ese orden para encabezar la ficha.
+  assert.deepEqual(
+    expositores.map((expositor) => expositor.displayName),
+    ['Ana', 'Beto'],
+  );
+  assert.equal(expositores[1].standId, PRIMERA.id);
+});
+
+test('el acompañante tampoco anuncia mesa mientras el pago siga pendiente', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  await db.insert(schema.exhibitors).values({
+    clerkUserId: 'user_beto',
+    slug: 'beto',
+    displayName: 'Beto',
+    verified: true,
+  });
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: PRIMERA.id,
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) return;
+
+  await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    slug: 'beto',
+  });
+
+  const expositores = await expositoresDesdeBase(db, EDICION);
+  const beto = expositores.find((expositor) => expositor.displayName === 'Beto');
+
+  // Es participante, pero la mesa todavía se puede caer: misma regla que el
+  // titular, porque se cae para los dos a la vez.
+  assert.equal(beto?.standId, undefined);
+});
+
+test('si la reserva se cancela, su acompañante deja de ser participante', async () => {
+  const { db, ana } = await baseDePrueba();
+
+  await db.insert(schema.exhibitors).values({
+    clerkUserId: 'user_beto',
+    slug: 'beto',
+    displayName: 'Beto',
+    verified: true,
+  });
+
+  const reserva = await reservarStand(db, {
+    editionId: EDICION,
+    standCode: PRIMERA.id,
+    exhibitorId: ana,
+    ...TANDA,
+  });
+  if (!reserva.ok) return;
+
+  await confirmarPago(db, { reservationId: reserva.reservationId, staffUserId: 'user_staff' });
+  await agregarCompanero(db, {
+    reservationId: reserva.reservationId,
+    exhibitorId: ana,
+    slug: 'beto',
+  });
+  await cancelarReserva(db, { reservationId: reserva.reservationId, motivo: 'prueba' });
+
+  const expositores = await expositoresDesdeBase(db, EDICION);
+  assert.deepEqual(expositores, []);
 });

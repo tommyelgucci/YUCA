@@ -37,7 +37,7 @@ export default function StandMap({
   const scrollRef = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
 
-  const { standsDeEspacio, getExpositorPorStand } = useFeria();
+  const { standsDeEspacio, getExpositoresPorStand } = useFeria();
 
   const espacio = espaciosPorId.get(espacioId)!;
   const mesas = standsDeEspacio(espacioId);
@@ -185,7 +185,7 @@ export default function StandMap({
           {mesas.map((stand) => {
             const zona = ZONAS[stand.kind];
             const estado = ESTADOS[stand.status];
-            const expositor = getExpositorPorStand(stand.id);
+            const ocupantes = getExpositoresPorStand(stand.id);
             const isSelected = selectedId === stand.id;
             const pagada = stand.status === 'ocupado';
 
@@ -193,7 +193,10 @@ export default function StandMap({
             const cy = stand.y + stand.height / 2;
             const giro = stand.rotate ? `rotate(${stand.rotate} ${cx} ${cy})` : undefined;
 
-            const ocupante = expositor?.displayName ?? stand.externalName;
+            // Se nombran todos: quien no ve el mapa se entera por aquí de que
+            // esa mesa la comparten dos personas, igual que quien la mira.
+            const ocupante =
+              ocupantes.map((persona) => persona.displayName).join(' y ') || stand.externalName;
             const etiqueta = `${zona.label} ${stand.numero}. ${estado.label}.${
               ocupante ? ` ${ocupante}.` : ''
             }`;
