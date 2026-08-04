@@ -5,6 +5,174 @@ al final de una fase.
 
 ## Última actualización
 
+**2026-08-04 (noche)** — llegaron tres audios con requisitos nuevos y **cambió
+la sede**. Nada de esto está construido; queda anotado con lo que se verificó
+contra el código y contra el plano.
+
+### ⛔ Congelado hasta que se mida la sede nueva
+
+La feria se muda a un **hotel** y crecen las mesas: *"pueden ser 50 más además
+de las 34"*. Las 34 son exactamente las de tipo `ilustrador` del plano actual —
+falta saber si las 50 nuevas son de ese tipo o repartidas entre todos.
+
+**Mientras no haya medición, no se toca**: el plano, los precios por fase, los
+cupos por fase, ni la restricción de zonas. Cualquier cosa que se construya
+sobre los números de hoy hay que rehacerla.
+
+La geometría del plano está **dibujada a mano en `lib/data/feria.ts`**, así que
+cambiar de sede es redibujarla entera. Lo que hace falta traer de la visita:
+
+1. **El plano en PDF que tenga el hotel** — casi todos los salones de eventos lo
+   tienen, con medidas y capacidades. Ahorra la mitad del trabajo y es más
+   exacto que medir a ojo.
+2. Largo y ancho de cada ambiente, en metros.
+3. **Tamaño real de la mesa del hotel** (1,80 × 0,60 es lo típico, pero hay que
+   confirmarlo). De ahí sale todo lo demás.
+4. **Ancho de pasillo.** Es lo que siempre se olvida: si entran 90 mesas pero no
+   se puede caminar entre ellas, no entran 90.
+5. Puertas, entradas, escenario, columnas, baños, salidas de emergencia.
+6. Tomacorrientes: dónde y cuántos.
+7. Dónde permite el hotel la comida.
+8. Fotos de cada ambiente desde las esquinas.
+9. ¿El hotel pone mesas y sillas, o hay que llevarlas?
+
+### Los números del audio no cerraban (contrastados con el plano)
+
+Se verificó antes de que cambiara la sede, y vale como aviso de qué comprobar
+con los números nuevos.
+
+**"10 cupitos para cada uno" por fase no cabía.** Con 54 mesas repartidas
+34 ilustrador / 14 emprendimiento / 4 comida / 2 tienda, tres fases de 10 cupos
+sólo funcionaban para ilustradores; a los demás se les acababan las mesas en la
+fase 2. Y hacer tres fases de precio para las **2 mesas de tienda** no tiene
+sentido.
+
+**La tabla de precios está incompleta.** Del audio salen contradicciones (comida
+aparece con dos precios distintos para la fase 2) y **tienda no se menciona
+nunca**. A favor: 4 tipos × 3 fases = **12**, que son exactamente los 12 QR que
+pidió la organización, así que tienda sí debería tener sus tres precios.
+
+### Requisitos nuevos, por orden de lo que cuesta ignorarlos
+
+**1. La foto no llega al carnet.** Es lo que la organización llama "lo
+principal". El avatar ya se sube y el Excel ya existe, pero **no hay puente**:
+la columna `foto_archivo` escribe un nombre (`C20-1.png`) de un archivo que
+**nadie genera**, y no hay ninguna columna con la dirección de la foto.
+Illustrator va a buscar esas imágenes y no las va a encontrar.
+→ Lo que falta es un **ZIP con las fotos ya renombradas** para descomprimir
+junto al Excel. Decisión aparte, no técnica: la foto de perfil artística suele
+ser una ilustración o un logo, no una cara. Si el carnet identifica personas,
+hay que pedir una segunda foto.
+
+**2. El plazo de 24 h va a quitarle la mesa a gente que ya pagó.**
+`expirarReservasVencidas` mata **cualquier** reserva pendiente vencida, aunque
+ya se haya declarado el comprobante. Con 48 h perdona; con 24 h, quien paga un
+sábado por la noche pierde la mesa el domingo porque nadie del equipo miró el
+panel. → **Declarar el comprobante tiene que congelar el plazo**: la reserva
+pasa a "pendiente de revisión", que sólo cierra una persona.
+
+**3. Al acompañante no le avisa nadie.** Hoy te pueden sumar a una mesa y no
+enterarte: no hay aviso, y sales en el mapa y en las credenciales impresas sin
+saberlo. La organización lo describió sin darse cuenta (*"me olvidé de decirle a
+mi amigo"*). El parche que pide es avisar al intentar tomar otra mesa; el
+arreglo de fondo es **avisar al sumarlo, e idealmente que tenga que aceptar**.
+Nota: hoy el sistema no "advierte" que ya tienes mesa, **lo impide** (índice
+único). Cambiarlo a advertencia es un cambio de regla, no de texto.
+
+**4. La media mesa a precio fijo se puede explotar.** Propuesta: quien no tiene
+compañero paga **150 fijo** y esos 10 Bs de diferencia son la comisión. Contra la
+fase 1 (290) la organización gana 10; contra la fase 3 (350) **pierde 50**, y
+todo el mundo va a decir que no tiene compañero para pagar 150 en vez de 175.
+→ Que media mesa sea **la mitad de la fase vigente + comisión fija**.
+
+**5. Emparejamiento automático de medias mesas.** Se puede, pero arrastra: qué
+pasa si nadie más pide media mesa, quién responde si la pareja no funciona, y
+mesas bloqueadas esperando. → Versión barata que da casi lo mismo: un **tablón
+de "busco compañero"** donde los verificados se ven entre sí y se emparejan
+solos. Cero algoritmo, cero devoluciones, cero responsabilidad de la
+organización por una pareja mala.
+
+**6. Cobro partido.** Que cada uno pague su mitad duplica la conciliación: hasta
+108 pagos que revisar en vez de 54, y un caso nuevo que va a pasar seguro —
+**uno paga y el otro no**. Hay que decidirlo antes. La alternativa es lo que hay
+hoy y lo que hace Glitter: paga el titular y se arreglan entre ellos.
+
+**7. Zonas por tipo de mesa.** La comida **sí** hay que bloquearla a las mesas de
+afuera: es restricción física (humo, olor, electricidad), no estética. Para el
+resto conviene **filtrar por defecto pero dejar cambiar**, porque el perfil tiene
+un solo público y quien ilustra *y* vende artesanía quedaría bloqueado —
+generando trabajo manual, que es el recurso escaso. Que filtre la persona que
+verifica, no la interfaz.
+→ Detalle a resolver una vez: los perfiles usan `artistas / emprendimientos /
+tiendas / comidas` y las mesas usan `ilustrador / emprendimiento / tienda /
+comida`. Hay que fijar la correspondencia.
+
+**8. Separar "Quiero participar" de reservar mesa.** Verificado → ve la info →
+acepta reglas → *"listo para participar"* → y **recién cuando abran**, elige
+mesa. Operativamente vale más de lo que parece: **dice cuánta gente quiere entrar
+antes de comprometer el salón**. Implica mover la aceptación de reglas de la
+reserva a la edición.
+
+**9. Buscador de acompañante por nombre.** Hoy se suma pegando el enlace del
+perfil; nadie sabe qué es un "slug".
+
+**10. "La verificación tarda de 1 a 3 días"** en la pantalla de alta. Es una
+promesa: si la cola se atrasa, se incumple.
+
+### Falta una regla que sí importa: IA y arte calcado
+
+Revisado el reglamento: cubre *"nada que copie el trabajo de otra persona sin su
+permiso"*, pero **no menciona la IA en ningún lado**, y "calcado" tampoco queda
+claro. Glitter sí lo prohíbe explícitamente.
+
+Para una feria de ilustración en 2026 esto no es un detalle: es de las reglas que
+provocan peleas si no están escritas **antes**. Y arrastra algo que conviene ver
+venir: si el equipo tiene que juzgar si una obra es de IA, **verificar deja de
+ser "esto no es spam" y pasa a ser juzgar arte**, que es muchísimo más trabajo
+para la persona que ya es el cuello de botella.
+
+### Sobre las membresías (Semilla / Brote)
+
+Mejoró respecto de la propuesta anterior: **ya no se cobra por mirar el
+catálogo**, que era lo único capaz de matar esto. Ahora son adelantos, sugerir
+temáticas y saber de otras ferias — eso es un club de apoyo, no un peaje.
+
+Tres cosas que siguen mal:
+
+- **El 10% de descuento en la mesa no se sostiene.** Brote cuesta 35 Bs/mes y el
+  descuento son 30–35 Bs. Exigiendo un mes de antigüedad, se paga 35 para
+  ahorrar 30: **el beneficio vale dinero negativo**. No persuade a nadie y añade
+  reglas. → Cámbialo por **elegir mesa 24–48 h antes que el resto**: no cuesta ni
+  un boliviano y vale mucho más, porque las mesas buenas se van primero.
+- **Cobrar 20–35 Bs al mes cuesta más de lo que recauda.** No hay débito
+  automático: es un QR por persona y por mes, cuadrado a mano, para siempre. →
+  **Anual o por ciclo de feria.**
+- **El beneficio principal es un compromiso de trabajo, no una función.** "Ver
+  las temáticas antes" es contenido que alguien escribe cada mes. Antes de
+  venderlo: **¿quién lo escribe y con qué frecuencia se compromete?** Si la
+  respuesta es "cuando pueda", el club dura dos meses.
+
+Dato que conviene no pasar por alto: **Glitter no cobra membresía.** Es el
+competidor local más establecido. Puede ser oportunidad o puede ser señal.
+
+Ideas de beneficio que cuestan cero: elegir mesa antes, ver la temática antes,
+votar temáticas, insignia en el perfil, página de "quienes sostienen Yuca",
+enterarse primero de otras ferias, prioridad en lista de espera si se libera una
+mesa, y **plantillas descargables para que anuncien en sus redes** — esa última
+se paga sola en difusión.
+
+### Lo que se puede hacer sin esperar a la medición
+
+Ninguno depende del plano ni de los precios:
+
+1. **ZIP de fotos para los carnets** (lo que la organización llama "lo principal")
+2. **Congelar el plazo al declarar el comprobante** (antes de bajar a 24 h)
+3. **Avisar al acompañante cuando lo suman**
+4. **Buscador de compañero por nombre**
+5. **Aviso de "la verificación tarda 1 a 3 días"**
+
+---
+
 **2026-08-04** — dos cosas que estaban esperando a que el almacenamiento
 funcionara de verdad, más un fallo que tumbaba `/evento`.
 
