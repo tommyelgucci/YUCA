@@ -7,7 +7,8 @@ sólo lo operativo que no cabe ahí.
 ## Comandos
 
 ```bash
-npm install
+npm ci               # instalar dependencias (lo normal — ver abajo)
+npm install          # sólo para añadir o subir una dependencia a propósito
 npm run dev          # http://localhost:3000
 npm run build
 npm start
@@ -24,6 +25,25 @@ npm run db:limpiar-demo  # borra sólo los expositores sembrados (sin --si no to
 Arranca sin `.env.local`: sin `DATABASE_URL` usa los mocks de `lib/data/`, sin
 claves de Clerk oculta cuentas y `/admin`. Copiar `.env.example` para
 activarlos.
+
+### Instalar dependencias: `npm ci`, no `npm install`
+
+`npm ci` instala exactamente lo que fija `package-lock.json`. `npm install`
+puede subir versiones dentro del rango de `package.json` sin que nadie lo pida,
+y por ahí es por donde entra una versión recién publicada que todavía no ha
+mirado nadie.
+
+No es cautela de manual. El 11 de mayo de 2026 se publicaron 84 versiones
+maliciosas en 42 paquetes `@tanstack/*` —de los que este repo arrastra uno,
+`@tanstack/query-core`, por dentro de `@clerk/shared`— y en horas se propagó a
+más de 160 paquetes. Entraron por el pipeline de release legítimo del proyecto
+y los tarballs llevaban **procedencia SLSA válida**, así que comprobar la firma
+no habría avisado de nada. Lo que sí funcionó fue el lockfile: quien instalaba
+con `npm ci` no se bajó ninguna.
+
+Por eso `npm install` se reserva para cuando la intención es justamente añadir
+o actualizar algo — y ahí toca **revisar el diff del lockfile** antes de
+comitearlo, que es el único momento en que se ve qué versiones nuevas entraron.
 
 **Antes de dar por terminado cualquier cambio en `lib/reservas.ts`,
 `lib/perfiles.ts`, `lib/edad.ts`, `lib/tienda.ts`, `lib/actividades.ts`,

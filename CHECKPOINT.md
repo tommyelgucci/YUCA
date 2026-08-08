@@ -5,6 +5,50 @@ al final de una fase.
 
 ## Última actualización
 
+**2026-08-07** — comprobado que el ataque a los paquetes de TanStack no tocó
+este repo, y anotada en `CLAUDE.md` la regla de instalar con `npm ci`.
+
+### El ataque a `@tanstack/*` (11 de mayo de 2026) no nos alcanzó
+
+Llegó por un vídeo que lo contaba como si hubiera sido "ayer". El ataque es
+real —84 versiones maliciosas en 42 paquetes `@tanstack/*`, propagadas en horas
+a más de 160 paquetes de npm y PyPI— pero ocurrió **tres meses antes** y las
+versiones llevan desde entonces retiradas del registro.
+
+Este repo arrastra uno de esos paquetes, `@tanstack/query-core`, de forma
+indirecta a través de `@clerk/shared`. No usa `@tanstack/react-router`, que fue
+el blanco principal. Comprobado, no supuesto:
+
+- La versión instalada es **5.101.4, publicada el 21 de julio**, dos meses
+  posterior al ataque.
+- Su hash de integridad **coincide exacto** con el que publica el registro.
+- `npm audit` no reporta nada de `@tanstack`.
+- Los únicos `postinstall` en todo `node_modules` son `esbuild`, `sharp` y
+  `unrs-resolver`, los tres normales: compilan binarios nativos.
+
+**Lo que hay que retener del caso**, porque cambia qué defensas sirven: los
+atacantes entraron por el **pipeline de release legítimo** de TanStack
+encadenando tres fallos de GitHub Actions, y los tarballs maliciosos llevaban
+**procedencia SLSA válida** —primer caso documentado—, así que verificar la
+firma no habría avisado. Tampoco bastaba con bloquear scripts de instalación: el
+payload no iba en un `postinstall` del tarball sino en una `optionalDependency`
+apuntando a un paquete de GitHub cuyo hook `prepare` lo lanzaba, que es
+justamente la vuelta a esa defensa.
+
+Lo que sí funcionó fue el **lockfile**. De ahí la regla nueva en `CLAUDE.md`:
+instalar con `npm ci`, y dejar `npm install` para cuando la intención sea subir
+algo a propósito. `package-lock.json` ya estaba versionado, así que no hubo que
+cambiar nada más.
+
+**No se cambió de gestor de paquetes.** El consejo que circulaba era pasarse a
+pnpm; su bloqueo de scripts por defecto es una ventaja real, pero este ataque
+está diseñado para rodearlo, y lo de "no instala nada de menos de un día"
+(`minimumReleaseAge`) hay que activarlo a mano, no viene puesto. Migrar el
+proyecto entero por una defensa que este caso concreto ya esquivó no sale a
+cuenta; el lockfile hace el trabajo pesado.
+
+---
+
 **2026-08-04 (noche)** — llegaron tres audios con requisitos nuevos y **cambió
 la sede**. Nada de esto está construido; queda anotado con lo que se verificó
 contra el código y contra el plano.
