@@ -2,6 +2,34 @@
 
 Escrito el 2026-08-03, con el YukaWaii Fest 4 en noviembre: quedan tres meses.
 
+> **Revisión del 2026-08-04.** Llegaron requisitos nuevos de la organización y
+> **cambió la sede** (a un hotel, con unas 50 mesas más). El detalle de cada uno
+> está en [`CHECKPOINT.md`](CHECKPOINT.md); aquí sólo va el orden y por qué.
+>
+> **Lo que está congelado hasta que se mida el salón nuevo**: el plano, los
+> precios por fase, los cupos por fase y la restricción de zonas. Construir eso
+> con los números de hoy es trabajo que hay que rehacer.
+>
+> **Lo que sigue en pie**, porque no depende de la sede, en este orden:
+>
+> 1. **El ZIP de fotos para los carnets.** Es lo que la organización llama "lo
+>    principal" y hoy no funciona: el Excel apunta a archivos que nadie genera.
+>    Sin esto los carnets se imprimen sin cara.
+> 2. **Congelar el plazo al declarar el comprobante.** Va *antes* de bajar el
+>    plazo a 24 horas, no después: tal como está, quien paga un sábado por la
+>    noche pierde la mesa el domingo. Arreglar esto después de haber devuelto
+>    dinero cuesta mucho más que arreglarlo antes.
+> 3. **Avisar al acompañante cuando lo suman.** Hoy alguien puede estar en una
+>    mesa, salir en el mapa y en las credenciales, y no saberlo.
+> 4. **Buscador de compañero por nombre**, y el aviso de que la verificación
+>    tarda de 1 a 3 días.
+>
+> **Y una decisión que no es de código y conviene tomar ya**: escribir la regla
+> sobre **IA y arte calcado**. El reglamento no la tiene, Glitter sí. Es de las
+> que provocan peleas si no están escritas antes — y hay que asumir que
+> aplicarla convierte la verificación en juzgar arte, que es mucho más trabajo
+> para quien ya es el cuello de botella.
+
 Tres criterios ordenan todo lo que sigue: **que no cueste dinero hasta que
 genere dinero**, **que cada etapa sirva aunque la siguiente no llegue**, y
 **que no cargue de trabajo manual al equipo**, que es el recurso más escaso
@@ -98,6 +126,20 @@ Después de la feria, con gente ya usando el catálogo:
 
 **Cuesta 0 USD.** El chat completo queda para más adelante, si los pedidos
 demuestran que hace falta.
+
+### Nota sobre las membresías (revisión del 2026-08-04)
+
+La propuesta que llegó de la organización **mejoró en lo que importaba**: ya no
+cobra por ver el catálogo. Los beneficios pasaron a ser adelantos, sugerir
+temáticas y saber de otras ferias, que es exactamente el "club de apoyo" que se
+recomienda más abajo en vez de una puerta.
+
+Lo que sigue mal, con el detalle en `CHECKPOINT.md`: el **10% de descuento en la
+mesa vale dinero negativo** para quien lo compra (35 Bs de cuota contra 30–35 de
+ahorro) y conviene cambiarlo por **elegir mesa antes que el resto**, que no
+cuesta nada; el **cobro mensual** sigue siendo inviable a mano y tiene que ser
+anual o por ciclo de feria; y el beneficio principal es **contenido que alguien
+tiene que escribir cada mes**, no una función que se programa una vez.
 
 ## Etapa 4 — Cobrar · 2027, con datos delante
 
