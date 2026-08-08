@@ -11,7 +11,7 @@ npm install
 npm run dev          # http://localhost:3000
 npm run build
 npm start
-npm test             # edad + reservas + perfiles + tienda + feria + credenciales (PGlite = Postgres real en WASM)
+npm test             # edad + reservas + perfiles + tienda + feria + actividades + credenciales (PGlite = Postgres real en WASM)
 npm run lint
 
 npm run db:generate   # SQL desde db/schema.ts
@@ -26,7 +26,8 @@ claves de Clerk oculta cuentas y `/admin`. Copiar `.env.example` para
 activarlos.
 
 **Antes de dar por terminado cualquier cambio en `lib/reservas.ts`,
-`lib/perfiles.ts`, `lib/edad.ts`, `lib/tienda.ts`, `db/schema.ts` o migraciones: correr
+`lib/perfiles.ts`, `lib/edad.ts`, `lib/tienda.ts`, `lib/actividades.ts`,
+`lib/feria.ts`, `lib/export/`, `db/schema.ts` o migraciones: correr
 `npm test`.** Cubre reserva feliz, doble reserva, carrera simultánea, doble
 mesa por expositor, confirmación, expiración, cancelación, mesas de
 organización, acompañantes, alta de perfil, choque de slug, verificación de
@@ -60,14 +61,27 @@ reglas aceptadas y las condiciones del acompañante de mesa.
 | Edad mínima y permiso del tutor         | `lib/edad.ts`, `lib/edad.test.ts` |
 | Reglas que se aceptan al reservar       | `lib/data/reglamento.ts` — al cambiar el texto, **subir `version`** |
 | Catálogo, productos y reseñas           | `lib/tienda.ts`, `db/tienda.test.ts` |
+| Inscripción a actividades y cupos       | `lib/actividades.ts`, `db/actividades.test.ts` |
+| Fotos e imágenes subidas                | `lib/almacenamiento.ts` — bucket `productos`, con `avatares/` dentro |
+| Excel de credenciales para Illustrator  | `lib/export/`, `db/credenciales.test.ts` (contra base) y `lib/export/credenciales.test.ts` (mocks) |
 | Públicos (artistas/comidas/tiendas/…)   | `AUDIENCIAS` en `lib/types.ts` — un solo sitio |
-| El mapa de stands                       | `lib/feria.ts` (lee la base), `lib/data/feria.ts` (geometría), `components/evento/StandMap.tsx` (render), `hooks/useStandSelection.ts` (estado) |
+| El mapa de stands                       | `lib/feria.ts` (lee la base), `lib/data/feria.ts` (geometría), `components/evento/StandMap.tsx` (render), `hooks/useStandSelection.ts` (estado) — ⛔ **congelado**, ver abajo |
 | Roles y permisos                        | `lib/auth.ts` — cada página protegida llama a `exigirSesionOEntrar()` y cada Server Action comprueba la sesión por su cuenta. `middleware.ts` ya no decide quién entra a dónde |
 | Contenido de la portada                 | `lib/site.js`                                     |
 | Convocatorias / fases de inscripción     | `lib/data/convocatorias.ts`, función `ctaMesa()`  |
 | Precios vigentes                        | `lib/data/preventas.ts`                           |
 | Qué cuesta mantener la plataforma       | [`COSTOS.md`](COSTOS.md) — de ahí sale el precio de la membresía |
 | Esquema de datos                        | `db/schema.ts` → `db:generate` → revisar el SQL antes de aplicar |
+
+## ⛔ Congelado hasta que se mida la sede nueva (2026-08-04)
+
+La feria se muda a un hotel y crecen las mesas. **No tocar** hasta tener la
+medición: el plano (`lib/data/feria.ts`), los precios por fase
+(`lib/data/preventas.ts`), los cupos por fase y la restricción de zonas por tipo
+de mesa. Construir sobre los números de hoy es trabajo que hay que rehacer.
+
+Lo que sí se puede avanzar, y el detalle de todo lo anterior, está en
+[`CHECKPOINT.md`](CHECKPOINT.md) y [`PLAN.md`](PLAN.md).
 
 ## Estado del proyecto
 
